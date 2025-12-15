@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
+import ujpLogo from '../assets/ujp-praha.png'
 
 const links = [
-  { label: 'Projekty', href: '#' },
-  { label: 'Sezení', href: '#' },
   { label: 'Nápověda', href: '#' },
+  { label: 'Login', href: '#' },
 ]
 
 export function Header() {
@@ -12,9 +12,12 @@ export function Header() {
   return (
     <header className="sticky top-0 z-10 w-full border-b border-slate-200 bg-white/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
-        <div className="flex items-baseline gap-3">
-          <span className="text-lg font-semibold tracking-tight text-slate-900">UJP Segmentace</span>
-          <span className="text-xs uppercase text-slate-500">{dateLabel}</span>
+        <div className="flex items-center gap-3">
+          <img src={ujpLogo} alt="UJP Praha" className="h-9 w-auto" />
+          <div className="flex flex-col leading-tight">
+            <span className="text-sm font-semibold tracking-tight text-slate-900">UJP Segmentace</span>
+            <span className="text-[11px] uppercase text-slate-500">{dateLabel}</span>
+          </div>
         </div>
 
         <nav className="flex items-center gap-6 text-sm text-slate-500">
