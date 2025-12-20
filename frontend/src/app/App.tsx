@@ -33,6 +33,35 @@ export function App() {
                 Run
               </button>
             </div>
+            <div className="mt-4 grid gap-6 md:grid-cols-2">
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <header className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-800">Segmentation model</p>
+                </header>
+                <div className="mt-4 grid gap-3">
+                  {['SAM', 'In-house model'].map((model) => (
+                    <label key={model} className="flex items-center gap-3 text-sm text-slate-600">
+                      <input type="checkbox" className="accent-slate-900" disabled />
+                      <span>{model}</span>
+                    </label>
+                  ))}
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <header>
+                  <p className="text-sm font-semibold text-slate-800">Prompt type</p>
+                </header>
+                <div className="mt-4 grid gap-3">
+                  {['Point', 'Bounding box', 'Point + box'].map((prompt) => (
+                    <label key={prompt} className="flex items-center gap-3 text-sm text-slate-600">
+                      <input type="checkbox" className="accent-slate-900" disabled />
+                      <span>{prompt}</span>
+                    </label>
+                  ))}
+                </div>
+              </section>
+            </div>
           </div>
         </main>
       </div>

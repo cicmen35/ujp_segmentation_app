@@ -2,8 +2,8 @@ import { useMemo } from 'react'
 import ujpLogo from '../assets/ujp-praha.png'
 
 const links = [
-  { label: 'Nápověda', href: '#' },
   { label: 'Login', href: '#' },
+  { label: 'Help', href: '#' },
 ]
 
 export function Header() {
