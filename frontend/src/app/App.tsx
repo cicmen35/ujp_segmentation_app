@@ -6,20 +6,28 @@ import { UploadDropzone } from '../features/upload/UploadDropzone'
 import { useSessionStore } from '../lib/store/session'
 
 export function App() {
-  const clear = useSessionStore((s) => s.clear);
+  const clear = useSessionStore((s) => s.clear)
   const imageUrl = useSessionStore((s) => s.imageUrl)
 
-    return (
+  const model = useSessionStore((s) => s.model)
+  const setModel = useSessionStore((s) => s.setModel)
+
+  const promptMode = useSessionStore((s) => s.promptMode)
+  const setPromptMode = useSessionStore((s) => s.setPromptMode)
+
+  return (
     <div className="flex h-screen bg-white">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-auto px-8 py-6">
           <div className="flex flex-col gap-6">
+            {/* Upload / Preview */}
             <div className="flex gap-10">
-              {imageUrl ? <ImageCanvas/> : <UploadDropzone />}
+              {imageUrl ? <ImageCanvas /> : <UploadDropzone />}
             </div>
 
+            {/* Actions */}
             <div className="flex gap-4">
               <button
                 type="button"
@@ -40,34 +48,82 @@ export function App() {
               <SegmentPanel />
             </div>
 
+            {/* Settings */}
             <div className="mt-4 grid gap-6 md:grid-cols-2">
+              {/* Model selection */}
               <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <header className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-slate-800">Segmentation model</p>
                 </header>
+
                 <div className="mt-4 grid gap-3">
-                  {['SAM', 'In-house model'].map((model) => (
-                    <label key={model} className="flex items-center gap-3 text-sm text-slate-600">
-                      <input type="checkbox" className="accent-slate-900" disabled />
-                      <span>{model}</span>
-                    </label>
-                  ))}
+                  <label className="flex items-center gap-3 text-sm text-slate-600">
+                    <input
+                      type="radio"
+                      name="model"
+                      className="accent-slate-900"
+                      checked={model === 'sam'}
+                      onChange={() => setModel('sam')}
+                    />
+                    <span>SAM</span>
+                  </label>
+
+                  <label className="flex items-center gap-3 text-sm text-slate-600">
+                    <input
+                      type="radio"
+                      name="model"
+                      className="accent-slate-900"
+                      checked={model === 'in-house'}
+                      onChange={() => setModel('in-house')}
+                    />
+                    <span>In-house model</span>
+                  </label>
                 </div>
               </section>
 
-              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <header>
-                  <p className="text-sm font-semibold text-slate-800">Prompt type</p>
-                </header>
-                <div className="mt-4 grid gap-3">
-                  {['Point', 'Bounding box', 'Point + box'].map((prompt) => (
-                    <label key={prompt} className="flex items-center gap-3 text-sm text-slate-600">
-                      <input type="checkbox" className="accent-slate-900" disabled />
-                      <span>{prompt}</span>
+              {/* Prompt selection */}
+              {model === 'sam' && (
+                <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <header>
+                    <p className="text-sm font-semibold text-slate-800">Prompt type</p>
+                  </header>
+
+                  <div className="mt-4 grid gap-3">
+                    <label className="flex items-center gap-3 text-sm text-slate-600">
+                      <input
+                        type="radio"
+                        name="prompt"
+                        className="accent-slate-900"
+                        checked={promptMode === 'box'}
+                        onChange={() => setPromptMode('box')}
+                      />
+                      <span>Bounding box</span>
                     </label>
-                  ))}
-                </div>
-              </section>
+
+                    <label className="flex items-center gap-3 text-sm text-slate-600">
+                      <input
+                        type="radio"
+                        name="prompt"
+                        className="accent-slate-900"
+                        checked={promptMode === 'points'}
+                        onChange={() => setPromptMode('points')}
+                      />
+                      <span>Pos / neg points</span>
+                    </label>
+
+                    <label className="flex items-center gap-3 text-sm text-slate-600">
+                      <input
+                        type="radio"
+                        name="prompt"
+                        className="accent-slate-900"
+                        checked={promptMode === 'box + points'}
+                        onChange={() => setPromptMode('box + points')}
+                      />
+                      <span>Box + pos / neg points</span>
+                    </label>
+                  </div>
+                </section>
+              )}
             </div>
           </div>
         </main>

@@ -29,7 +29,7 @@ export function SegmentPanel() {
       disabled={!file || loading}
       className="rounded-2xl bg-slate-900 px-4 py-2 text-white disabled:opacity-50"
     >
-      {loading ? "Segmentuji..." : "Segmentovat (SAM)"}
+      {loading ? "Segmenting..." : "Segment image"}
     </button>
   );
 }
