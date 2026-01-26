@@ -7,16 +7,20 @@ export function ImageCanvas() {
   if (!imageUrl) return <div className="text-slate-400">No image selected</div>;
 
   return (
-    <div className="relative inline-block">
-      <img src={imageUrl} alt="input" className="block max-w-full rounded-2xl" />
-      {maskUrl && (
-        <img
-          src={maskUrl}
-          alt="mask"
-          className="absolute left-0 top-0 block max-w-full rounded-2xl opacity-40"
-          style={{ mixBlendMode: "multiply" }}
-        />
-      )}
+    <div className="grid gap-4 md:grid-cols-2">
+      <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <p className="mb-2 text-xs font-semibold text-slate-700">Original image</p>
+        <img src={imageUrl} alt="original" className="block w-full rounded-xl" />
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <p className="mb-2 text-xs font-semibold text-slate-700">Image mask</p>
+        {maskUrl ? (
+          <img src={maskUrl} alt="mask" className="block w-full rounded-xl" />
+        ) : (
+          <div className="text-slate-400">No mask yet</div>
+        )}
+      </div>
     </div>
   );
 }
