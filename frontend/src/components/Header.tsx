@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import ujpLogo from '../assets/ujp-praha.png'
+import ujpLogo from '../assets/ujp-praha.jpg'
 
 const links = [
   { label: 'Login', href: '#' },
@@ -7,7 +7,7 @@ const links = [
 ]
 
 export function Header() {
-  const dateLabel = useMemo(() => new Date().toLocaleDateString('cs-CZ', { day: '2-digit', month: 'short' }), [])
+  const dateLabel = useMemo(() => new Date().toLocaleDateString('cs-CZ', { day: '2-digit', month: 'short', year: 'numeric' }), [])
 
   return (
     <header className="sticky top-0 z-10 w-full border-b border-slate-200 bg-white/80 backdrop-blur">
