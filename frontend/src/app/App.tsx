@@ -7,6 +7,7 @@ import { useSessionStore } from '../lib/store/session'
 
 export function App() {
   const clear = useSessionStore((s) => s.clear);
+  const imageUrl = useSessionStore((s) => s.imageUrl)
 
     return (
     <div className="flex h-screen bg-white">
@@ -16,7 +17,7 @@ export function App() {
         <main className="flex-1 overflow-auto px-8 py-6">
           <div className="flex flex-col gap-6">
             <div className="flex gap-10">
-              <UploadDropzone />
+              {imageUrl ? <ImageCanvas/> : <UploadDropzone />}
             </div>
 
             <div className="flex gap-4">
@@ -66,15 +67,6 @@ export function App() {
                     </label>
                   ))}
                 </div>
-              </section>
-            </div>
-
-            <div className="mt-4">
-              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <header className="mb-3">
-                  <p className="text-sm font-semibold text-slate-800">Preview</p>
-                </header>
-                <ImageCanvas />
               </section>
             </div>
           </div>
