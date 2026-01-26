@@ -1,9 +1,14 @@
 import { Header } from '../components/Header'
 import { Sidebar } from '../components/Sidebar'
+import { ImageCanvas } from '../components/ImageCanvas/ImageCanvas'
+import { SegmentPanel } from '../features/segment/SegmentPanel'
 import { UploadDropzone } from '../features/upload/UploadDropzone'
+import { useSessionStore } from '../lib/store/session'
 
 export function App() {
-  return (
+  const clear = useSessionStore((s) => s.clear);
+
+    return (
     <div className="flex h-screen bg-white">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -13,26 +18,27 @@ export function App() {
             <div className="flex gap-10">
               <UploadDropzone />
             </div>
+
             <div className="flex gap-4">
               <button
                 type="button"
+                onClick={clear}
                 className="rounded-full border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
               >
                 Reset
               </button>
+
               <button
                 type="button"
                 className="rounded-full border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                disabled
               >
                 Undo
               </button>
-              <button
-                type="button"
-                className="rounded-full bg-slate-900 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-              >
-                Run
-              </button>
+
+              <SegmentPanel />
             </div>
+
             <div className="mt-4 grid gap-6 md:grid-cols-2">
               <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <header className="flex items-center justify-between">
@@ -62,10 +68,18 @@ export function App() {
                 </div>
               </section>
             </div>
+
+            <div className="mt-4">
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <header className="mb-3">
+                  <p className="text-sm font-semibold text-slate-800">Preview</p>
+                </header>
+                <ImageCanvas />
+              </section>
+            </div>
           </div>
         </main>
       </div>
     </div>
   )
 }
-
