@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useSessionStore } from "../../lib/store/session";
 
 const PaperclipIcon = () => (
   <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">
@@ -16,14 +17,16 @@ const PaperclipIcon = () => (
 export function UploadDropzone() {
   const inputRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState<string | null>(null)
+  const setFile = useSessionStore((s) => s.setFile);
 
   const handleSelect = () => {
     inputRef.current?.click()
   }
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+    const file = event.target.files?.[0] ?? null;
     setFileName(file ? file.name : null)
+    setFile(file);
   }
 
   return (
