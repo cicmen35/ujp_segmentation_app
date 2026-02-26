@@ -6,8 +6,33 @@ type Props = {
     onClose: () => void
 }
 
+/** Clamp translate so at least 25% of the image stays visible on each axis. */
+function clampTranslate(
+    tx: number,
+    ty: number,
+    scale: number,
+    imgEl: HTMLImageElement | null,
+) {
+    if (!imgEl) return { x: tx, y: ty }
+
+    const imgW = imgEl.offsetWidth * scale
+    const imgH = imgEl.offsetHeight * scale
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+
+    // Max pan = half the scaled image + half the viewport, minus 25% of the image kept visible
+    const maxTx = (imgW / 2) * 0.75 + vw / 2 * 0.1
+    const maxTy = (imgH / 2) * 0.75 + vh / 2 * 0.1
+
+    return {
+        x: Math.min(Math.max(tx, -maxTx), maxTx),
+        y: Math.min(Math.max(ty, -maxTy), maxTy),
+    }
+}
+
 export function ImageModal({ src, alt, onClose }: Props) {
     const backdropRef = useRef<HTMLDivElement>(null)
+    const imgRef = useRef<HTMLImageElement>(null)
     const [scale, setScale] = useState(1)
     const [translate, setTranslate] = useState({ x: 0, y: 0 })
     const isPanning = useRef(false)
@@ -40,7 +65,13 @@ export function ImageModal({ src, alt, onClose }: Props) {
     const handleWheel = (e: React.WheelEvent) => {
         e.preventDefault()
         const delta = e.deltaY > 0 ? -0.1 : 0.1
-        setScale((prev) => Math.min(Math.max(prev + delta, 0.25), 5))
+
+        setScale((prev) => {
+            const next = Math.min(Math.max(prev + delta, 1), 5)
+            // Re-clamp translate at the new scale
+            setTranslate((t) => clampTranslate(t.x, t.y, next, imgRef.current))
+            return next
+        })
     }
 
     // Pan with mouse drag
@@ -56,7 +87,10 @@ export function ImageModal({ src, alt, onClose }: Props) {
         const dx = e.clientX - lastMouse.current.x
         const dy = e.clientY - lastMouse.current.y
         lastMouse.current = { x: e.clientX, y: e.clientY }
-        setTranslate((prev) => ({ x: prev.x + dx, y: prev.y + dy }))
+
+        setTranslate((prev) =>
+            clampTranslate(prev.x + dx, prev.y + dy, scale, imgRef.current),
+        )
     }
 
     const handleMouseUp = () => {
@@ -104,6 +138,7 @@ export function ImageModal({ src, alt, onClose }: Props) {
                 style={{ userSelect: 'none' }}
             >
                 <img
+                    ref={imgRef}
                     src={src}
                     alt={alt}
                     draggable={false}
