@@ -3,11 +3,16 @@ import { create } from "zustand";
 export type SegmentationModel = 'sam' | 'in-house';
 export type PromptMode = "box" | "points" | "box + points";
 
+export type BoundingBox = [number, number, number, number]; // [x1, y1, x2, y2] in image pixels
+
 type SessionState = {
   // data
   file: File | null;
   imageUrl: string | null;
   maskUrl: string | null;
+
+  // prompts
+  boundingBox: BoundingBox | null;
 
   // UI/config
   model: SegmentationModel;
@@ -16,6 +21,7 @@ type SessionState = {
   // setters
   setFile: (file: File | null) => void;
   setMaskUrl: (url: string | null) => void;
+  setBoundingBox: (box: BoundingBox | null) => void;
   setModel: (model: SegmentationModel) => void;
   setPromptMode: (mode: PromptMode) => void;
 
@@ -27,6 +33,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   file: null,
   imageUrl: null,
   maskUrl: null,
+  boundingBox: null,
   model: 'sam',
   promptMode: 'box',
 
@@ -47,6 +54,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (maskUrl) URL.revokeObjectURL(maskUrl);
     set({ maskUrl: url });
   },
+  setBoundingBox: (box) => set({ boundingBox: box }),
   setModel: (model) => set({ model }),
   setPromptMode: (mode) => set({ promptMode: mode }),
 
@@ -54,6 +62,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const { imageUrl, maskUrl } = get();
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     if (maskUrl) URL.revokeObjectURL(maskUrl);
-    set({ file: null, imageUrl: null, maskUrl: null, model: 'sam', promptMode: 'box' });
+    set({ file: null, imageUrl: null, maskUrl: null, boundingBox: null, model: 'sam', promptMode: 'box' });
   },
 }));

@@ -1,42 +1,49 @@
 import { useEffect, useCallback, useRef, useState } from 'react'
+import type { BoundingBox } from '../lib/store/session'
 
 type Props = {
     src: string
     alt: string
     onClose: () => void
+    /** Enable bounding-box drawing mode */
+    allowBoxDrawing?: boolean
+    /** Pre-existing box to display (image pixel coords) */
+    initialBox?: BoundingBox | null
+    /** Called when user finishes drawing a box */
+    onBoxDrawn?: (box: BoundingBox) => void
 }
 
-/** Clamp translate so at least 25% of the image stays visible on each axis. */
-function clampTranslate(
-    tx: number,
-    ty: number,
-    scale: number,
-    imgEl: HTMLImageElement | null,
-) {
-    if (!imgEl) return { x: tx, y: ty }
-
-    const imgW = imgEl.offsetWidth * scale
-    const imgH = imgEl.offsetHeight * scale
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-
-    // Max pan = half the scaled image + half the viewport, minus 25% of the image kept visible
-    const maxTx = (imgW / 2) * 0.75 + vw / 2 * 0.1
-    const maxTy = (imgH / 2) * 0.75 + vh / 2 * 0.1
-
+/** Convert a screen point to image pixel coordinates */
+function screenToImageCoords(
+    clientX: number,
+    clientY: number,
+    imgEl: HTMLImageElement,
+): { x: number; y: number } {
+    const rect = imgEl.getBoundingClientRect()
+    const relX = (clientX - rect.left) / rect.width
+    const relY = (clientY - rect.top) / rect.height
     return {
-        x: Math.min(Math.max(tx, -maxTx), maxTx),
-        y: Math.min(Math.max(ty, -maxTy), maxTy),
+        x: Math.round(Math.max(0, Math.min(relX * imgEl.naturalWidth, imgEl.naturalWidth))),
+        y: Math.round(Math.max(0, Math.min(relY * imgEl.naturalHeight, imgEl.naturalHeight))),
     }
 }
 
-export function ImageModal({ src, alt, onClose }: Props) {
+export function ImageModal({
+    src, alt, onClose,
+    allowBoxDrawing = false,
+    initialBox = null,
+    onBoxDrawn,
+}: Props) {
     const backdropRef = useRef<HTMLDivElement>(null)
     const imgRef = useRef<HTMLImageElement>(null)
+
+    // Zoom state
     const [scale, setScale] = useState(1)
-    const [translate, setTranslate] = useState({ x: 0, y: 0 })
-    const isPanning = useRef(false)
-    const lastMouse = useRef({ x: 0, y: 0 })
+
+    // Box drawing state (image pixel coords)
+    const [box, setBox] = useState<BoundingBox | null>(initialBox)
+    const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null)
+    const [drawCurrent, setDrawCurrent] = useState<{ x: number; y: number } | null>(null)
 
     // Close on Escape
     const handleKeyDown = useCallback(
@@ -48,7 +55,6 @@ export function ImageModal({ src, alt, onClose }: Props) {
 
     useEffect(() => {
         document.addEventListener('keydown', handleKeyDown)
-        // prevent body scroll while modal is open
         document.body.style.overflow = 'hidden'
         return () => {
             document.removeEventListener('keydown', handleKeyDown)
@@ -56,7 +62,6 @@ export function ImageModal({ src, alt, onClose }: Props) {
         }
     }, [handleKeyDown])
 
-    // Close when clicking backdrop (not the image)
     const handleBackdropClick = (e: React.MouseEvent) => {
         if (e.target === backdropRef.current) onClose()
     }
@@ -65,43 +70,57 @@ export function ImageModal({ src, alt, onClose }: Props) {
     const handleWheel = (e: React.WheelEvent) => {
         e.preventDefault()
         const delta = e.deltaY > 0 ? -0.1 : 0.1
-
-        setScale((prev) => {
-            const next = Math.min(Math.max(prev + delta, 1), 5)
-            // Re-clamp translate at the new scale
-            setTranslate((t) => clampTranslate(t.x, t.y, next, imgRef.current))
-            return next
-        })
+        setScale((prev) => Math.min(Math.max(prev + delta, 1), 5))
     }
 
-    // Pan with mouse drag
+    // Mouse handlers — box drawing only
     const handleMouseDown = (e: React.MouseEvent) => {
-        if (e.button !== 0) return
-        isPanning.current = true
-        lastMouse.current = { x: e.clientX, y: e.clientY }
+        if (e.button !== 0 || !allowBoxDrawing || !imgRef.current) return
         e.preventDefault()
+        const pt = screenToImageCoords(e.clientX, e.clientY, imgRef.current)
+        setDrawStart(pt)
+        setDrawCurrent(pt)
+        setBox(null)
     }
 
     const handleMouseMove = (e: React.MouseEvent) => {
-        if (!isPanning.current) return
-        const dx = e.clientX - lastMouse.current.x
-        const dy = e.clientY - lastMouse.current.y
-        lastMouse.current = { x: e.clientX, y: e.clientY }
-
-        setTranslate((prev) =>
-            clampTranslate(prev.x + dx, prev.y + dy, scale, imgRef.current),
-        )
+        if (!drawStart || !imgRef.current) return
+        const pt = screenToImageCoords(e.clientX, e.clientY, imgRef.current)
+        setDrawCurrent(pt)
     }
 
     const handleMouseUp = () => {
-        isPanning.current = false
+        if (!drawStart || !drawCurrent) return
+
+        const x1 = Math.min(drawStart.x, drawCurrent.x)
+        const y1 = Math.min(drawStart.y, drawCurrent.y)
+        const x2 = Math.max(drawStart.x, drawCurrent.x)
+        const y2 = Math.max(drawStart.y, drawCurrent.y)
+
+        if (x2 - x1 > 5 && y2 - y1 > 5) {
+            const newBox: BoundingBox = [x1, y1, x2, y2]
+            setBox(newBox)
+            onBoxDrawn?.(newBox)
+        }
+
+        setDrawStart(null)
+        setDrawCurrent(null)
     }
 
-    // Reset zoom/pan on double-click
+    // Reset zoom on double-click
     const handleDoubleClick = () => {
         setScale(1)
-        setTranslate({ x: 0, y: 0 })
     }
+
+    // Box to render (in-progress or finished)
+    const activeBox: BoundingBox | null = drawStart && drawCurrent
+        ? [
+            Math.min(drawStart.x, drawCurrent.x),
+            Math.min(drawStart.y, drawCurrent.y),
+            Math.max(drawStart.x, drawCurrent.x),
+            Math.max(drawStart.y, drawCurrent.y),
+        ]
+        : box
 
     return (
         <div
@@ -121,14 +140,16 @@ export function ImageModal({ src, alt, onClose }: Props) {
                 </svg>
             </button>
 
-            {/* Zoom hint */}
+            {/* Hint bar */}
             <div className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-4 py-1.5 text-xs text-white/60">
-                Scroll to zoom · Drag to pan · Double-click to reset
+                {allowBoxDrawing
+                    ? 'Scroll to zoom · Drag to draw bounding box · Double-click to reset zoom'
+                    : 'Scroll to zoom · Double-click to reset zoom'}
             </div>
 
             {/* Image container */}
             <div
-                className="cursor-grab active:cursor-grabbing"
+                className={allowBoxDrawing ? 'cursor-crosshair' : 'cursor-default'}
                 onWheel={handleWheel}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
@@ -137,16 +158,47 @@ export function ImageModal({ src, alt, onClose }: Props) {
                 onDoubleClick={handleDoubleClick}
                 style={{ userSelect: 'none' }}
             >
-                <img
-                    ref={imgRef}
-                    src={src}
-                    alt={alt}
-                    draggable={false}
-                    className="max-h-[85vh] max-w-[85vw] rounded-xl shadow-2xl transition-transform duration-75"
+                <div
                     style={{
-                        transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+                        position: 'relative',
+                        display: 'inline-block',
+                        transform: `scale(${scale})`,
+                        transition: 'transform 75ms',
                     }}
-                />
+                >
+                    <img
+                        ref={imgRef}
+                        src={src}
+                        alt={alt}
+                        draggable={false}
+                        className="block max-h-[85vh] max-w-[85vw] rounded-xl shadow-2xl"
+                    />
+
+                    {/* Bounding box overlay */}
+                    {activeBox && imgRef.current && (
+                        <svg
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                width: '100%',
+                                height: '100%',
+                                pointerEvents: 'none',
+                            }}
+                            viewBox={`0 0 ${imgRef.current.naturalWidth} ${imgRef.current.naturalHeight}`}
+                            preserveAspectRatio="none"
+                        >
+                            <rect
+                                x={activeBox[0]}
+                                y={activeBox[1]}
+                                width={activeBox[2] - activeBox[0]}
+                                height={activeBox[3] - activeBox[1]}
+                                fill="rgba(59, 130, 246, 0.15)"
+                                stroke="rgb(59, 130, 246)"
+                                strokeWidth={Math.max(2, 2 / scale)}
+                            />
+                        </svg>
+                    )}
+                </div>
             </div>
         </div>
     )

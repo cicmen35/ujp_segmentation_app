@@ -4,16 +4,18 @@ import { useState } from "react";
 
 export function SegmentPanel() {
   const file = useSessionStore((s) => s.file);
+  const boundingBox = useSessionStore((s) => s.boundingBox);
   const setMaskUrl = useSessionStore((s) => s.setMaskUrl);
   const [loading, setLoading] = useState(false);
 
+  const canSegment = !!file && !!boundingBox;
+
   const onSegment = async () => {
-    console.log("SEGMENT CLICK", file); // debugger
-    if (!file) return;
+    if (!file || !boundingBox) return;
     setLoading(true);
     try {
       const maskUrl = await samSegment(file, {
-        box: [200, 50, 1150, 1200],
+        box: boundingBox,
         multimask: true,
       });
       setMaskUrl(maskUrl);
@@ -25,10 +27,11 @@ export function SegmentPanel() {
   return (
     <button
       onClick={onSegment}
-      disabled={!file || loading}
+      disabled={!canSegment || loading}
       className="rounded-2xl bg-slate-900 px-4 py-2 text-white disabled:opacity-50"
     >
       {loading ? "Segmenting..." : "Segment image"}
     </button>
   );
 }
+
