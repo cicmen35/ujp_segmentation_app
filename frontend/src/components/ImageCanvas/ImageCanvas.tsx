@@ -5,7 +5,14 @@ import { ImageModal } from "../ImageModal";
 export function ImageCanvas() {
   const imageUrl = useSessionStore((s) => s.imageUrl);
   const maskUrl = useSessionStore((s) => s.maskUrl);
-  const [modalSrc, setModalSrc] = useState<{ src: string; alt: string } | null>(null);
+  const promptMode = useSessionStore((s) => s.promptMode);
+  const boundingBox = useSessionStore((s) => s.boundingBox);
+  const setBoundingBox = useSessionStore((s) => s.setBoundingBox);
+
+  const [modalSrc, setModalSrc] = useState<{ src: string; alt: string; isOriginal: boolean } | null>(null);
+  const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
+
+  const boxDrawingEnabled = promptMode === 'box' || promptMode === 'box + points';
 
   if (!imageUrl) return <div className="text-slate-400">No image selected</div>;
 
@@ -17,14 +24,38 @@ export function ImageCanvas() {
           <p className="mb-2 text-xs font-semibold text-slate-700">Original image</p>
           <button
             type="button"
-            onClick={() => setModalSrc({ src: imageUrl, alt: "Original image" })}
+            onClick={() => setModalSrc({ src: imageUrl, alt: "Original image", isOriginal: true })}
             className="group relative block w-full overflow-hidden rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
           >
             <img
               src={imageUrl}
               alt="original"
               className="block w-full rounded-xl transition duration-200 group-hover:brightness-95"
+              onLoad={(e) => {
+                const img = e.currentTarget;
+                setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
+              }}
             />
+
+            {/* Bounding box overlay on thumbnail */}
+            {boundingBox && naturalSize && (
+              <svg
+                className="pointer-events-none absolute inset-0 h-full w-full rounded-xl"
+                viewBox={`0 0 ${naturalSize.w} ${naturalSize.h}`}
+                preserveAspectRatio="none"
+              >
+                <rect
+                  x={boundingBox[0]}
+                  y={boundingBox[1]}
+                  width={boundingBox[2] - boundingBox[0]}
+                  height={boundingBox[3] - boundingBox[1]}
+                  fill="rgba(59, 130, 246, 0.15)"
+                  stroke="rgb(59, 130, 246)"
+                  strokeWidth={Math.max(4, naturalSize.w * 0.003)}
+                />
+              </svg>
+            )}
+
             <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-black/0 text-white/0 transition duration-200 group-hover:bg-black/20 group-hover:text-white/90">
               <svg viewBox="0 0 24 24" className="h-8 w-8 drop-shadow" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" strokeLinecap="round" strokeLinejoin="round" />
@@ -41,7 +72,7 @@ export function ImageCanvas() {
             <>
               <button
                 type="button"
-                onClick={() => setModalSrc({ src: maskUrl, alt: "Segmentation mask" })}
+                onClick={() => setModalSrc({ src: maskUrl, alt: "Segmentation mask", isOriginal: false })}
                 className="group relative block w-full overflow-hidden rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
               >
                 <img
@@ -71,6 +102,9 @@ export function ImageCanvas() {
           src={modalSrc.src}
           alt={modalSrc.alt}
           onClose={() => setModalSrc(null)}
+          allowBoxDrawing={modalSrc.isOriginal && boxDrawingEnabled}
+          initialBox={modalSrc.isOriginal ? boundingBox : null}
+          onBoxDrawn={setBoundingBox}
         />
       )}
     </>
