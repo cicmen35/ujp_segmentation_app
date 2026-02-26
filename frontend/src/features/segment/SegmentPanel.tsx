@@ -13,7 +13,6 @@ export function SegmentPanel() {
     setLoading(true);
     try {
       const maskUrl = await samSegment(file, {
-        // ImageCanvas doplní box/points
         box: [200, 50, 1150, 1200],
         multimask: true,
       });
