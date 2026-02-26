@@ -8,13 +8,20 @@ export function ImageCanvas() {
   const promptMode = useSessionStore((s) => s.promptMode);
   const boundingBox = useSessionStore((s) => s.boundingBox);
   const setBoundingBox = useSessionStore((s) => s.setBoundingBox);
+  const promptPoints = useSessionStore((s) => s.promptPoints);
+  const addPromptPoint = useSessionStore((s) => s.addPromptPoint);
 
   const [modalSrc, setModalSrc] = useState<{ src: string; alt: string; isOriginal: boolean } | null>(null);
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
 
-  const boxDrawingEnabled = promptMode === 'box' || promptMode === 'box + points';
+  const boxEnabled = promptMode === 'box' || promptMode === 'box + points';
+  const pointsEnabled = promptMode === 'points' || promptMode === 'box + points';
 
   if (!imageUrl) return <div className="text-slate-400">No image selected</div>;
+
+  const pointRadius = naturalSize
+    ? Math.max(4, Math.min(naturalSize.w, naturalSize.h) * 0.008)
+    : 6;
 
   return (
     <>
@@ -37,22 +44,35 @@ export function ImageCanvas() {
               }}
             />
 
-            {/* Bounding box overlay on thumbnail */}
-            {boundingBox && naturalSize && (
+            {/* Bounding box + points overlay on thumbnail */}
+            {naturalSize && (boundingBox || promptPoints.length > 0) && (
               <svg
                 className="pointer-events-none absolute inset-0 h-full w-full rounded-xl"
                 viewBox={`0 0 ${naturalSize.w} ${naturalSize.h}`}
                 preserveAspectRatio="none"
               >
-                <rect
-                  x={boundingBox[0]}
-                  y={boundingBox[1]}
-                  width={boundingBox[2] - boundingBox[0]}
-                  height={boundingBox[3] - boundingBox[1]}
-                  fill="rgba(59, 130, 246, 0.15)"
-                  stroke="rgb(59, 130, 246)"
-                  strokeWidth={Math.max(4, naturalSize.w * 0.003)}
-                />
+                {boundingBox && (
+                  <rect
+                    x={boundingBox[0]}
+                    y={boundingBox[1]}
+                    width={boundingBox[2] - boundingBox[0]}
+                    height={boundingBox[3] - boundingBox[1]}
+                    fill="rgba(59, 130, 246, 0.15)"
+                    stroke="rgb(59, 130, 246)"
+                    strokeWidth={Math.max(4, naturalSize.w * 0.003)}
+                  />
+                )}
+                {promptPoints.map((pt, i) => (
+                  <circle
+                    key={i}
+                    cx={pt.x}
+                    cy={pt.y}
+                    r={pointRadius}
+                    fill={pt.label === 1 ? 'rgba(34, 197, 94, 0.85)' : 'rgba(239, 68, 68, 0.85)'}
+                    stroke="white"
+                    strokeWidth={Math.max(2, pointRadius * 0.3)}
+                  />
+                ))}
               </svg>
             )}
 
@@ -102,11 +122,15 @@ export function ImageCanvas() {
           src={modalSrc.src}
           alt={modalSrc.alt}
           onClose={() => setModalSrc(null)}
-          allowBoxDrawing={modalSrc.isOriginal && boxDrawingEnabled}
+          allowBoxDrawing={modalSrc.isOriginal && boxEnabled}
+          allowPointPlacing={modalSrc.isOriginal && pointsEnabled}
           initialBox={modalSrc.isOriginal ? boundingBox : null}
+          initialPoints={modalSrc.isOriginal ? promptPoints : []}
           onBoxDrawn={setBoundingBox}
+          onPointPlaced={addPromptPoint}
         />
       )}
     </>
   );
 }
+

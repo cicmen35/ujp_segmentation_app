@@ -4,20 +4,39 @@ import { useState } from "react";
 
 export function SegmentPanel() {
   const file = useSessionStore((s) => s.file);
+  const promptMode = useSessionStore((s) => s.promptMode);
   const boundingBox = useSessionStore((s) => s.boundingBox);
+  const promptPoints = useSessionStore((s) => s.promptPoints);
   const setMaskUrl = useSessionStore((s) => s.setMaskUrl);
   const [loading, setLoading] = useState(false);
 
-  const canSegment = !!file && !!boundingBox;
+  // Determine if we have enough prompt data
+  const hasBox = !!boundingBox;
+  const hasPoints = promptPoints.length > 0;
+
+  const canSegment = !!file && (
+    (promptMode === 'box' && hasBox) ||
+    (promptMode === 'points' && hasPoints) ||
+    (promptMode === 'box + points' && hasBox && hasPoints)
+  );
 
   const onSegment = async () => {
-    if (!file || !boundingBox) return;
+    if (!file || !canSegment) return;
     setLoading(true);
     try {
-      const maskUrl = await samSegment(file, {
-        box: boundingBox,
-        multimask: true,
-      });
+      // Build prompt based on mode
+      const prompt: Record<string, unknown> = { multimask: true };
+
+      if ((promptMode === 'box' || promptMode === 'box + points') && boundingBox) {
+        prompt.box = boundingBox;
+      }
+
+      if ((promptMode === 'points' || promptMode === 'box + points') && hasPoints) {
+        prompt.point_coords = promptPoints.map((p) => [p.x, p.y]);
+        prompt.point_labels = promptPoints.map((p) => p.label);
+      }
+
+      const maskUrl = await samSegment(file, prompt);
       setMaskUrl(maskUrl);
     } finally {
       setLoading(false);
@@ -34,4 +53,3 @@ export function SegmentPanel() {
     </button>
   );
 }
-
