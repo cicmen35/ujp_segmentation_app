@@ -4,6 +4,7 @@ export type SegmentationModel = 'sam' | 'in-house';
 export type PromptMode = "box" | "points" | "box + points";
 
 export type BoundingBox = [number, number, number, number]; // [x1, y1, x2, y2] in image pixels
+export type PromptPoint = { x: number; y: number; label: 0 | 1 }; // 0 = negative, 1 = positive
 
 type SessionState = {
   // data
@@ -13,6 +14,7 @@ type SessionState = {
 
   // prompts
   boundingBox: BoundingBox | null;
+  promptPoints: PromptPoint[];
 
   // UI/config
   model: SegmentationModel;
@@ -22,6 +24,9 @@ type SessionState = {
   setFile: (file: File | null) => void;
   setMaskUrl: (url: string | null) => void;
   setBoundingBox: (box: BoundingBox | null) => void;
+  addPromptPoint: (point: PromptPoint) => void;
+  removeLastPoint: () => void;
+  clearPromptPoints: () => void;
   setModel: (model: SegmentationModel) => void;
   setPromptMode: (mode: PromptMode) => void;
 
@@ -34,6 +39,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   imageUrl: null,
   maskUrl: null,
   boundingBox: null,
+  promptPoints: [],
   model: 'sam',
   promptMode: 'box',
 
@@ -55,6 +61,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set({ maskUrl: url });
   },
   setBoundingBox: (box) => set({ boundingBox: box }),
+  addPromptPoint: (point) => set((s) => ({ promptPoints: [...s.promptPoints, point] })),
+  removeLastPoint: () => set((s) => ({ promptPoints: s.promptPoints.slice(0, -1) })),
+  clearPromptPoints: () => set({ promptPoints: [] }),
   setModel: (model) => set({ model }),
   setPromptMode: (mode) => set({ promptMode: mode }),
 
@@ -62,6 +71,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const { imageUrl, maskUrl } = get();
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     if (maskUrl) URL.revokeObjectURL(maskUrl);
-    set({ file: null, imageUrl: null, maskUrl: null, boundingBox: null, model: 'sam', promptMode: 'box' });
+    set({ file: null, imageUrl: null, maskUrl: null, boundingBox: null, promptPoints: [], model: 'sam', promptMode: 'box' });
   },
 }));

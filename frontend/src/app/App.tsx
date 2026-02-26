@@ -9,6 +9,22 @@ export function App() {
   const clear = useSessionStore((s) => s.clear)
   const imageUrl = useSessionStore((s) => s.imageUrl)
 
+  const boundingBox = useSessionStore((s) => s.boundingBox)
+  const setBoundingBox = useSessionStore((s) => s.setBoundingBox)
+  const promptPoints = useSessionStore((s) => s.promptPoints)
+  const removeLastPoint = useSessionStore((s) => s.removeLastPoint)
+
+  const hasPromptData = !!boundingBox || promptPoints.length > 0
+
+  const handleUndo = () => {
+    // Remove last point first, then box
+    if (promptPoints.length > 0) {
+      removeLastPoint()
+    } else if (boundingBox) {
+      setBoundingBox(null)
+    }
+  }
+
   const model = useSessionStore((s) => s.model)
   const setModel = useSessionStore((s) => s.setModel)
 
@@ -39,8 +55,9 @@ export function App() {
 
               <button
                 type="button"
-                className="rounded-full border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
-                disabled
+                onClick={handleUndo}
+                className="rounded-full border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:bg-white"
+                disabled={!hasPromptData}
               >
                 Undo
               </button>
