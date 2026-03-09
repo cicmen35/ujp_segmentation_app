@@ -2,12 +2,17 @@ import json
 import numpy as np
 import cv2
 import torch
+import sys
 from pathlib import Path
+
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+MODELS_DIR = PROJECT_DIR.parent / "models"
+
+sys.path.append(str(MODELS_DIR / "segment-anything"))
 
 from segment_anything import sam_model_registry, SamPredictor
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-CHECKPOINT = BASE_DIR / "segment-anything" / "checkpoints" / "sam_vit_h_4b8939.pth"
+CHECKPOINT = MODELS_DIR / "segment-anything" / "checkpoints" / "sam_vit_h_4b8939.pth"
 MODEL_TYPE = "vit_h"
 
 sam = sam_model_registry[MODEL_TYPE](checkpoint=str(CHECKPOINT))
