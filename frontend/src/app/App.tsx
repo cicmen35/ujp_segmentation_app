@@ -8,6 +8,7 @@ import { useSessionStore } from '../lib/store/session'
 export function App() {
   const clear = useSessionStore((s) => s.clear)
   const imageUrl = useSessionStore((s) => s.imageUrl)
+  const maskUrl = useSessionStore((s) => s.maskUrl)
 
   const boundingBox = useSessionStore((s) => s.boundingBox)
   const setBoundingBox = useSessionStore((s) => s.setBoundingBox)
@@ -63,6 +64,21 @@ export function App() {
               </button>
 
               <SegmentPanel />
+
+              {maskUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const a = document.createElement("a");
+                    a.href = maskUrl;
+                    a.download = "segmentation_mask.png";
+                    a.click();
+                  }}
+                  className="rounded-full border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  Save mask
+                </button>
+              )}
             </div>
 
             {/* Settings */}
