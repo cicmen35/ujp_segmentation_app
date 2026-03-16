@@ -2,8 +2,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.sam_routes import router as sam_router
-from backend.auth_routes import router as auth_router
+from backend.routes.sam_routes import router as sam_router
+from backend.routes.auth_routes import router as auth_router
 from backend.database import init_db
 
 
