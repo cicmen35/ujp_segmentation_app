@@ -5,8 +5,12 @@ import torch
 import sys
 from pathlib import Path
 
-PROJECT_DIR = Path(__file__).resolve().parent.parent
-MODELS_DIR = PROJECT_DIR.parent / "models"
+# __file__ = .../ujp_segmentation_app/backend/services/sam_service.py
+# .parent           → backend/services/
+# .parent.parent    → backend/
+# .parent.parent.parent → ujp_segmentation_app/  (project root)
+PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
+MODELS_DIR = PROJECT_DIR.parent / "models"  # sibling of ujp_segmentation_app/ on the VM
 
 sys.path.append(str(MODELS_DIR / "segment-anything"))
 
