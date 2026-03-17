@@ -64,9 +64,15 @@ def call(method: str, path: str, body: dict | None = None, cookie: str | None = 
 
     try:
         with urlopen(req) as response:
-            return response.status, dict(response.headers.items()), response.read().decode("utf-8")
+            normalized_headers = {
+                key.lower(): value for key, value in response.headers.items()
+            }
+            return response.status, normalized_headers, response.read().decode("utf-8")
     except HTTPError as exc:
-        return exc.code, dict(exc.headers.items()), exc.read().decode("utf-8")
+        normalized_headers = {
+            key.lower(): value for key, value in exc.headers.items()
+        }
+        return exc.code, normalized_headers, exc.read().decode("utf-8")
 
 
 def extract_cookie(set_cookie: str) -> str | None:
@@ -89,7 +95,7 @@ def main() -> int:
     failures += not expect(status == 200 and '"status"' in body, "GET /health")
 
     status, headers, _ = call("GET", "/auth/me", cookie="session_token=stale-token")
-    cleared = headers.get("Set-Cookie", "")
+    cleared = headers.get("set-cookie", "")
     failures += not expect(status == 401, "GET /auth/me rejects stale cookie")
     failures += not expect("session_token=" in cleared and "Max-Age=0" in cleared, "GET /auth/me clears stale cookie")
 
@@ -105,7 +111,7 @@ def main() -> int:
         "/auth/login",
         {"username": USERNAME, "password": PASSWORD},
     )
-    token = extract_cookie(headers.get("Set-Cookie", ""))
+    token = extract_cookie(headers.get("set-cookie", ""))
     failures += not expect(status == 200, "POST /auth/login accepts valid credentials")
     failures += not expect(bool(token), "POST /auth/login sets session cookie")
 
@@ -115,12 +121,12 @@ def main() -> int:
     failures += not expect(status == 200 and USERNAME in body, "GET /auth/me accepts session cookie")
 
     status, headers, _ = call("POST", "/auth/logout", cookie=session_cookie)
-    cleared = headers.get("Set-Cookie", "")
+    cleared = headers.get("set-cookie", "")
     failures += not expect(status == 200, "POST /auth/logout")
     failures += not expect("session_token=" in cleared and "Max-Age=0" in cleared, "POST /auth/logout clears cookie")
 
     status, headers, _ = call("GET", "/auth/me", cookie=session_cookie)
-    cleared = headers.get("Set-Cookie", "")
+    cleared = headers.get("set-cookie", "")
     failures += not expect(status == 401, "GET /auth/me rejects logged-out cookie")
     failures += not expect("session_token=" in cleared and "Max-Age=0" in cleared, "GET /auth/me clears logged-out cookie")
 
