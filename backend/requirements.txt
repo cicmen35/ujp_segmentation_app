@@ -6,4 +6,4 @@ opencv-python-headless
 pillow
 torch
 torchvision
-passlib[bcrypt]
+passlib[bcrypt==4.0.1]
