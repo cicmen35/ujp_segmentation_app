@@ -24,6 +24,7 @@ ROLE = os.getenv("AUTH_TEST_ROLE", "admin")
 
 
 def ensure_test_user() -> None:
+    """Create or refresh the local smoke-test user before the API checks run."""
     init_db()
     conn = sqlite3.connect(DB_FILE)
     try:
@@ -50,6 +51,7 @@ def ensure_test_user() -> None:
 
 
 def call(method: str, path: str, body: dict | None = None, cookie: str | None = None):
+    """Send one request to the backend and return its status, headers, and body."""
     headers = {}
     data = None
 
@@ -76,6 +78,7 @@ def call(method: str, path: str, body: dict | None = None, cookie: str | None = 
 
 
 def extract_cookie(set_cookie: str) -> str | None:
+    """Read the `session_token` value from a `Set-Cookie` response header."""
     jar = SimpleCookie()
     jar.load(set_cookie)
     token = jar.get("session_token")
@@ -83,11 +86,13 @@ def extract_cookie(set_cookie: str) -> str | None:
 
 
 def expect(ok: bool, label: str) -> bool:
+    """Print a single pass/fail result for one endpoint check."""
     print(f"[{'PASS' if ok else 'FAIL'}] {label}")
     return ok
 
 
 def main() -> int:
+    """Run the auth smoke test against the backend and report any failures."""
     ensure_test_user()
     failures = 0
 
