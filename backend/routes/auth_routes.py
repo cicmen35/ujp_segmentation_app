@@ -39,7 +39,7 @@ def login(login_req: LoginRequest, response: Response, db: sqlite3.Connection = 
         samesite="none",
         secure=True, # Critical for SameSite=none
     )
-    return {"message": "Login successful"}
+    return {"id": user["id"], "username": user["username"], "role": user["role"]}
 
 @router.post("/logout")
 def logout(request: Request, response: Response, db: sqlite3.Connection = Depends(get_db)):
