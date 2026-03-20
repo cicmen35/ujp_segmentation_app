@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { UserRole } from "../api/types";
 
 export type SegmentationModel = 'sam' | 'in-house';
 export type PromptMode = "box" | "points" | "box + points";
@@ -19,6 +20,9 @@ type SessionState = {
   // UI/config
   model: SegmentationModel;
   promptMode: PromptMode;
+  isLoggedIn: boolean;
+  currentUser: string | null;
+  role: UserRole | null;
 
   // setters
   setFile: (file: File | null) => void;
@@ -29,6 +33,8 @@ type SessionState = {
   clearPromptPoints: () => void;
   setModel: (model: SegmentationModel) => void;
   setPromptMode: (mode: PromptMode) => void;
+  setAuth: (user: { username: string; role: UserRole }) => void;
+  clearAuth: () => void;
 
   // utils
   clear: () => void;
@@ -42,6 +48,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   promptPoints: [],
   model: 'sam',
   promptMode: 'box',
+  isLoggedIn: false,
+  currentUser: null,
+  role: null,
 
   setFile: (file) => {
     // cleanup starých URL
@@ -66,6 +75,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   clearPromptPoints: () => set({ promptPoints: [] }),
   setModel: (model) => set({ model }),
   setPromptMode: (mode) => set({ promptMode: mode }),
+  setAuth: (user) => set({ isLoggedIn: true, currentUser: user.username, role: user.role }),
+  clearAuth: () => set({ isLoggedIn: false, currentUser: null, role: null }),
 
   clear: () => {
     const { imageUrl, maskUrl } = get();
