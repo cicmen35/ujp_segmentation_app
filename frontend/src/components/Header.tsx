@@ -1,12 +1,13 @@
 import { useMemo } from 'react'
 import ujpLogo from '../assets/ujp-praha.jpg'
 
-const links = [
-  { label: 'Login', href: '#' },
-  { label: 'Help', href: '#' },
-]
+type HeaderProps = {
+  isLoggedIn: boolean
+  currentUser: string | null
+  onLoginClick: () => void
+}
 
-export function Header() {
+export function Header({ isLoggedIn, currentUser, onLoginClick }: HeaderProps) {
   const dateLabel = useMemo(() => new Date().toLocaleDateString('cs-CZ', { day: '2-digit', month: 'short', year: 'numeric' }), [])
 
   return (
@@ -19,13 +20,22 @@ export function Header() {
           </div>
         </div>
 
-        <nav className="flex items-center gap-6 text-sm text-slate-500">
-          {links.map((link) => (
-            <a key={link.label} href={link.href} className="transition hover:text-slate-900">
-              {link.label}
-            </a>
-          ))}
-        </nav>
+        <div className="flex items-center gap-6 text-sm text-slate-500">
+          <a href="#" className="transition hover:text-slate-900">
+            Help
+          </a>
+          {isLoggedIn ? (
+            <span className="font-medium text-slate-900">{currentUser}</span>
+          ) : (
+            <button
+              type="button"
+              onClick={onLoginClick}
+              className="transition hover:text-slate-900"
+            >
+              Login
+            </button>
+          )}
+        </div>
       </div>
     </header>
   )
