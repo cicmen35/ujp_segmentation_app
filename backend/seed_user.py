@@ -1,8 +1,13 @@
+import sys
 import sqlite3
 import uuid
 import getpass
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from backend.database import init_db, DB_FILE
-from backend.auth_service import get_password_hash
+from backend.services.auth_service import get_password_hash
 
 def seed_admin():
     # Make sure DB and tables exist
