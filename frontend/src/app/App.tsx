@@ -4,7 +4,7 @@ import { Sidebar } from '../components/Sidebar'
 import { ImageCanvas } from '../components/ImageCanvas/ImageCanvas'
 import { SegmentPanel } from '../features/segment/SegmentPanel'
 import { UploadDropzone } from '../features/upload/UploadDropzone'
-import { fetchCurrentUser, login } from '../lib/api/client'
+import { fetchCurrentUser, login, logout } from '../lib/api/client'
 import { useSessionStore } from '../lib/store/session'
 
 export function App() {
@@ -38,6 +38,7 @@ export function App() {
   const promptMode = useSessionStore((s) => s.promptMode)
   const setPromptMode = useSessionStore((s) => s.setPromptMode)
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
   const [isLoginOpen, setIsLoginOpen] = useState(false)
   const [username, setUsername] = useState('')
@@ -84,6 +85,21 @@ export function App() {
     }
   }
 
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+
+    try {
+      await logout()
+    } finally {
+      clear()
+      clearAuth()
+      setPassword('')
+      setLoginError(null)
+      setIsLoginOpen(false)
+      setIsLoggingOut(false)
+    }
+  }
+
   return (
     <div className="flex h-screen bg-white">
       <Sidebar />
@@ -95,6 +111,8 @@ export function App() {
             setLoginError(null)
             setIsLoginOpen(true)
           }}
+          onLogoutClick={handleLogout}
+          isLoggingOut={isLoggingOut}
         />
         <main className="flex-1 overflow-auto px-8 py-6">
           <div className="flex flex-col gap-6">

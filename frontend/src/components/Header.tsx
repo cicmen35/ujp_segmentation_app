@@ -5,9 +5,11 @@ type HeaderProps = {
   isLoggedIn: boolean
   currentUser: string | null
   onLoginClick: () => void
+  onLogoutClick: () => void
+  isLoggingOut: boolean
 }
 
-export function Header({ isLoggedIn, currentUser, onLoginClick }: HeaderProps) {
+export function Header({ isLoggedIn, currentUser, onLoginClick, onLogoutClick, isLoggingOut }: HeaderProps) {
   const dateLabel = useMemo(() => new Date().toLocaleDateString('cs-CZ', { day: '2-digit', month: 'short', year: 'numeric' }), [])
 
   return (
@@ -25,7 +27,16 @@ export function Header({ isLoggedIn, currentUser, onLoginClick }: HeaderProps) {
             Help
           </a>
           {isLoggedIn ? (
-            <span className="font-medium text-slate-900">{currentUser}</span>
+            <>
+              <span className="font-medium text-slate-900">{currentUser}</span>
+              <button
+                type="button"
+                onClick={onLogoutClick}
+                className="transition hover:text-slate-900"
+              >
+                {isLoggingOut ? 'Logging out...' : 'Logout'}
+              </button>
+            </>
           ) : (
             <button
               type="button"
