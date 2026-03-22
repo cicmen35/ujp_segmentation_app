@@ -9,6 +9,30 @@ from backend.services.auth_service import verify_password, create_session, get_p
 
 router = APIRouter()
 
+
+def get_cookie_settings(request: Request) -> dict[str, object]:
+    """Use a dev-friendly cookie locally and a cross-site cookie for remote deployments."""
+    if request.url.hostname in {"localhost", "127.0.0.1"}:
+        return {"samesite": "lax", "secure": False}
+
+    return {"samesite": "none", "secure": True}
+
+
+def build_clear_cookie_header(request: Request) -> str:
+    """Return a Set-Cookie header that clears the auth cookie with matching attributes."""
+    cookie_settings = get_cookie_settings(request)
+    parts = ['session_token=""', "Max-Age=0", "Path=/", "HttpOnly"]
+
+    if cookie_settings["samesite"] == "none":
+        parts.append("SameSite=None")
+    else:
+        parts.append("SameSite=Lax")
+
+    if cookie_settings["secure"]:
+        parts.append("Secure")
+
+    return "; ".join(parts)
+
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -19,7 +43,12 @@ class RegisterRequest(BaseModel):
     role: str = 'user'
 
 @router.post("/login")
-def login(login_req: LoginRequest, response: Response, db: sqlite3.Connection = Depends(get_db)):
+def login(
+    login_req: LoginRequest,
+    request: Request,
+    response: Response,
+    db: sqlite3.Connection = Depends(get_db),
+):
     cursor = db.cursor()
     cursor.execute("SELECT id, username, password_hash, role FROM users WHERE username = ?", (login_req.username,))
     user = cursor.fetchone()
@@ -31,13 +60,15 @@ def login(login_req: LoginRequest, response: Response, db: sqlite3.Connection = 
         )
         
     token = create_session(db, user["id"])
+    cookie_settings = get_cookie_settings(request)
+
     response.set_cookie(
         key="session_token",
         value=token,
         httponly=True,
         max_age=7 * 24 * 60 * 60,  # 7 days
-        samesite="none",
-        secure=True, # Critical for SameSite=none
+        samesite=cookie_settings["samesite"],
+        secure=cookie_settings["secure"],
     )
     return {"id": user["id"], "username": user["username"], "role": user["role"]}
 
@@ -47,7 +78,13 @@ def logout(request: Request, response: Response, db: sqlite3.Connection = Depend
     if token:
         db.execute("DELETE FROM sessions WHERE token = ?", (token,))
         db.commit()
-    response.delete_cookie("session_token", samesite="none", secure=True, httponly=True)
+    cookie_settings = get_cookie_settings(request)
+    response.delete_cookie(
+        "session_token",
+        samesite=cookie_settings["samesite"],
+        secure=cookie_settings["secure"],
+        httponly=True,
+    )
     return {"message": "Logged out"}
 
 def get_current_user(request: Request, db: sqlite3.Connection = Depends(get_db)):
@@ -64,7 +101,7 @@ def get_current_user(request: Request, db: sqlite3.Connection = Depends(get_db))
     ''', (token,))
     row = cursor.fetchone()
     
-    clear_cookie_headers = {"Set-Cookie": 'session_token=""; Max-Age=0; Path=/; HttpOnly; SameSite=none; Secure'}
+    clear_cookie_headers = {"Set-Cookie": build_clear_cookie_header(request)}
     
     if not row:
         raise HTTPException(
