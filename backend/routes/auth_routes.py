@@ -4,23 +4,21 @@ import sqlite3
 import datetime
 import uuid
 
+from backend.config import COOKIE_SAMESITE, COOKIE_SECURE
 from backend.database import get_db
 from backend.services.auth_service import verify_password, create_session, get_password_hash
 
 router = APIRouter()
 
 
-def get_cookie_settings(request: Request) -> dict[str, object]:
-    """Use a dev-friendly cookie locally and a cross-site cookie for remote deployments."""
-    if request.url.hostname in {"localhost", "127.0.0.1"}:
-        return {"samesite": "lax", "secure": False}
-
-    return {"samesite": "none", "secure": True}
+def get_cookie_settings() -> dict[str, object]:
+    """Read auth cookie settings from explicit backend configuration."""
+    return {"samesite": COOKIE_SAMESITE, "secure": COOKIE_SECURE}
 
 
-def build_clear_cookie_header(request: Request) -> str:
+def build_clear_cookie_header() -> str:
     """Return a Set-Cookie header that clears the auth cookie with matching attributes."""
-    cookie_settings = get_cookie_settings(request)
+    cookie_settings = get_cookie_settings()
     parts = ['session_token=""', "Max-Age=0", "Path=/", "HttpOnly"]
 
     if cookie_settings["samesite"] == "none":
@@ -45,7 +43,6 @@ class RegisterRequest(BaseModel):
 @router.post("/login")
 def login(
     login_req: LoginRequest,
-    request: Request,
     response: Response,
     db: sqlite3.Connection = Depends(get_db),
 ):
@@ -60,7 +57,7 @@ def login(
         )
         
     token = create_session(db, user["id"])
-    cookie_settings = get_cookie_settings(request)
+    cookie_settings = get_cookie_settings()
 
     response.set_cookie(
         key="session_token",
@@ -78,7 +75,7 @@ def logout(request: Request, response: Response, db: sqlite3.Connection = Depend
     if token:
         db.execute("DELETE FROM sessions WHERE token = ?", (token,))
         db.commit()
-    cookie_settings = get_cookie_settings(request)
+    cookie_settings = get_cookie_settings()
     response.delete_cookie(
         "session_token",
         samesite=cookie_settings["samesite"],
@@ -101,7 +98,7 @@ def get_current_user(request: Request, db: sqlite3.Connection = Depends(get_db))
     ''', (token,))
     row = cursor.fetchone()
     
-    clear_cookie_headers = {"Set-Cookie": build_clear_cookie_header(request)}
+    clear_cookie_headers = {"Set-Cookie": build_clear_cookie_header()}
     
     if not row:
         raise HTTPException(
