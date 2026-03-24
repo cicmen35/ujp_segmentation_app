@@ -102,7 +102,7 @@ export function App() {
 
   return (
     <div className="flex h-screen bg-white">
-      <Sidebar />
+      {isLoggedIn && <Sidebar />}
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header
           isLoggedIn={isLoggedIn}
