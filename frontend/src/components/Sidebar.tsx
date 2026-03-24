@@ -85,10 +85,8 @@ export function Sidebar() {
               className="flex min-h-0 flex-col"
               style={{ flexBasis: `${splitRatio * 100}%`, flexGrow: 0, flexShrink: 0 }}
             >
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">All folders</p>
-              <div className="mt-3 flex-1 rounded-lg border border-dashed border-slate-300 bg-white/70 p-4 text-center text-slate-400">
-                Folder tree visible to administrators
-              </div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Shared folders</p>
+              <div className="mt-3 flex-1 rounded-lg border border-dashed border-slate-300 bg-white/70 p-4 text-center text-slate-400" />
             </section>
 
             <button
@@ -106,10 +104,8 @@ export function Sidebar() {
           className="flex min-h-0 flex-1 flex-col"
           style={isAdmin ? { flexBasis: `${(1 - splitRatio) * 100}%` } : undefined}
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">My folders</p>
-          <div className="mt-3 flex-1 rounded-lg border border-dashed border-slate-300 bg-white/70 p-4 text-center text-slate-400">
-            {`Private folder tree for ${currentUser ?? 'the current user'}`}
-          </div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Private folders</p>
+          <div className="mt-3 flex-1 rounded-lg border border-dashed border-slate-300 bg-white/70 p-4 text-center text-slate-400" />
         </section>
       </div>
 
