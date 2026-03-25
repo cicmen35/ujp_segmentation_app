@@ -38,7 +38,22 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     username: str
     password: str
-    role: str = 'user'
+
+
+def create_auth_response(response: Response, user_id: str, username: str, role: str, db: sqlite3.Connection):
+    """Create a session cookie and return the authenticated user payload."""
+    token = create_session(db, user_id)
+    cookie_settings = get_cookie_settings()
+
+    response.set_cookie(
+        key="session_token",
+        value=token,
+        httponly=True,
+        max_age=7 * 24 * 60 * 60,  # 7 days
+        samesite=cookie_settings["samesite"],
+        secure=cookie_settings["secure"],
+    )
+    return {"id": user_id, "username": username, "role": role}
 
 @router.post("/login")
 def login(
@@ -55,19 +70,58 @@ def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
-        
-    token = create_session(db, user["id"])
-    cookie_settings = get_cookie_settings()
 
-    response.set_cookie(
-        key="session_token",
-        value=token,
-        httponly=True,
-        max_age=7 * 24 * 60 * 60,  # 7 days
-        samesite=cookie_settings["samesite"],
-        secure=cookie_settings["secure"],
+    return create_auth_response(
+        response=response,
+        user_id=user["id"],
+        username=user["username"],
+        role=user["role"],
+        db=db,
     )
-    return {"id": user["id"], "username": user["username"], "role": user["role"]}
+
+
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+def register(
+    register_req: RegisterRequest,
+    response: Response,
+    db: sqlite3.Connection = Depends(get_db),
+):
+    username = register_req.username.strip()
+    password = register_req.password
+
+    if not username:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username cannot be empty")
+
+    if len(password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 6 characters long",
+        )
+
+    cursor = db.cursor()
+    cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+    if cursor.fetchone():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username already exists",
+        )
+
+    user_id = str(uuid.uuid4())
+    password_hash = get_password_hash(password)
+
+    cursor.execute(
+        "INSERT INTO users (id, username, password_hash, role) VALUES (?, ?, ?, ?)",
+        (user_id, username, password_hash, "user"),
+    )
+    db.commit()
+
+    return create_auth_response(
+        response=response,
+        user_id=user_id,
+        username=username,
+        role="user",
+        db=db,
+    )
 
 @router.post("/logout")
 def logout(request: Request, response: Response, db: sqlite3.Connection = Depends(get_db)):
