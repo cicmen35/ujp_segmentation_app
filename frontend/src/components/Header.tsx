@@ -23,9 +23,6 @@ export function Header({ isLoggedIn, currentUser, onLoginClick, onLogoutClick, i
         </div>
 
         <div className="flex items-center gap-6 text-sm text-slate-500">
-          <a href="#" className="transition hover:text-slate-900">
-            Help
-          </a>
           {isLoggedIn ? (
             <>
               <span className="font-medium text-slate-900">{currentUser}</span>
