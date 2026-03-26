@@ -1,10 +1,11 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import { Header } from '../components/Header'
 import { Sidebar } from '../components/Sidebar'
 import { ImageCanvas } from '../components/ImageCanvas/ImageCanvas'
 import { SegmentPanel } from '../features/segment/SegmentPanel'
 import { UploadDropzone } from '../features/upload/UploadDropzone'
-import { deleteUser, fetchCurrentUser, fetchUsers, login, logout, register } from '../lib/api/client'
+import { deleteUser, fetchCurrentUser, fetchUsers, login, logout, register, saveSession } from '../lib/api/client'
 import type { UserListItem } from '../lib/api/types'
 import { useSessionStore } from '../lib/store/session'
 
@@ -14,6 +15,9 @@ export function App() {
   const isLoggedIn = useSessionStore((s) => s.isLoggedIn)
   const currentUser = useSessionStore((s) => s.currentUser)
   const role = useSessionStore((s) => s.role)
+  const selectedSaveScope = useSessionStore((s) => s.selectedSaveScope)
+  const selectedSavePath = useSessionStore((s) => s.selectedSavePath)
+  const bumpFolderTreeVersion = useSessionStore((s) => s.bumpFolderTreeVersion)
   const setAuth = useSessionStore((s) => s.setAuth)
   const clearAuth = useSessionStore((s) => s.clearAuth)
   const clear = useSessionStore((s) => s.clear)
@@ -54,6 +58,9 @@ export function App() {
   const [isDeletingUser, setIsDeletingUser] = useState(false)
   const [isDeleteUsersOpen, setIsDeleteUsersOpen] = useState(false)
   const [userSuggestions, setUserSuggestions] = useState<UserListItem[]>([])
+  const [isSavingSession, setIsSavingSession] = useState(false)
+  const [saveSessionError, setSaveSessionError] = useState<string | null>(null)
+  const [saveSessionSuccess, setSaveSessionSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -162,6 +169,28 @@ export function App() {
     }
   }
 
+  const handleSaveSession = async () => {
+    if (!imageUrl || !maskUrl) return
+    const file = useSessionStore.getState().file
+    if (!file) return
+
+    setSaveSessionError(null)
+    setSaveSessionSuccess(null)
+    setIsSavingSession(true)
+
+    try {
+      const maskBlob = await fetch(maskUrl).then((response) => response.blob())
+      const scope = selectedSaveScope ?? 'private'
+      const result = await saveSession(file, maskBlob, scope, selectedSavePath)
+      setSaveSessionSuccess(`Saved to ${scope}/${result.path}`)
+      bumpFolderTreeVersion()
+    } catch (error) {
+      setSaveSessionError(error instanceof Error ? error.message : 'Failed to save session')
+    } finally {
+      setIsSavingSession(false)
+    }
+  }
+
   return (
     <div className="flex h-screen bg-white">
       {isLoggedIn && <Sidebar />}
@@ -263,20 +292,43 @@ export function App() {
               <SegmentPanel />
 
               {maskUrl && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const a = document.createElement("a");
-                    a.href = maskUrl;
-                    a.download = "segmentation_mask.png";
-                    a.click();
-                  }}
-                  className="rounded-full border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
-                >
-                  Save mask
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={handleSaveSession}
+                    disabled={isSavingSession}
+                    className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+                  >
+                    {isSavingSession ? 'Saving session...' : 'Save session'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const a = document.createElement("a");
+                      a.href = maskUrl;
+                      a.download = "segmentation_mask.png";
+                      a.click();
+                    }}
+                    className="rounded-full border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    Save mask
+                  </button>
+                </>
               )}
             </div>
+
+            {(saveSessionError || saveSessionSuccess) && (
+              <div
+                className={`rounded-2xl border px-4 py-3 text-sm ${
+                  saveSessionError
+                    ? 'border-red-200 bg-red-50 text-red-700'
+                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                }`}
+              >
+                {saveSessionError ?? saveSessionSuccess}
+              </div>
+            )}
 
             {/* Settings */}
             <div className="mt-4 grid gap-6 md:grid-cols-2">
