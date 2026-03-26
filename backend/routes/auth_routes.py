@@ -4,7 +4,7 @@ import sqlite3
 import datetime
 import uuid
 
-from backend.config import COOKIE_SAMESITE, COOKIE_SECURE
+from backend.config import COOKIE_SAMESITE, COOKIE_SECURE, ENABLE_DEV_AUTH_BYPASS
 from backend.database import get_db
 from backend.services.auth_service import verify_password, create_session, get_password_hash
 
@@ -181,6 +181,20 @@ def require_admin(user: dict = Depends(get_current_user)):
     return user
 
 
+def delete_user_by_username(username: str, db: sqlite3.Connection):
+    """Delete a user and their sessions by username."""
+    cursor = db.cursor()
+    cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+    user = cursor.fetchone()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    db.execute("DELETE FROM sessions WHERE user_id = ?", (user["id"],))
+    db.execute("DELETE FROM users WHERE id = ?", (user["id"],))
+    db.commit()
+
+
 @router.get("/me")
 def get_me(user: dict = Depends(get_current_user)):
     return user
@@ -219,15 +233,15 @@ def delete_user(
     if admin["username"] == username:
         raise HTTPException(status_code=400, detail="Admin cannot delete their own account")
 
-    cursor = db.cursor()
-    cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
-    user = cursor.fetchone()
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    db.execute("DELETE FROM sessions WHERE user_id = ?", (user["id"],))
-    db.execute("DELETE FROM users WHERE id = ?", (user["id"],))
-    db.commit()
+    delete_user_by_username(username, db)
 
     return {"message": f"User '{username}' deleted"}
+
+
+@router.delete("/dev/users/{username}")
+def dev_delete_user(username: str, db: sqlite3.Connection = Depends(get_db)):
+    if not ENABLE_DEV_AUTH_BYPASS:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    delete_user_by_username(username, db)
+    return {"message": f"User '{username}' deleted via dev bypass"}
