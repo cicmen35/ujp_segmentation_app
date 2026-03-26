@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.routes.sam_routes import router as sam_router
 from backend.routes.auth_routes import router as auth_router
+from backend.routes.files_routes import router as files_router
 from backend.database import init_db
 
 
@@ -25,3 +26,4 @@ app.add_middleware(
 
 app.include_router(sam_router, prefix="/sam")
 app.include_router(auth_router, prefix="/auth")
+app.include_router(files_router, prefix="/files")
