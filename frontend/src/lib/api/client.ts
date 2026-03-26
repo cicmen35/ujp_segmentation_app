@@ -1,4 +1,4 @@
-import type { AuthUser, UserListItem } from "./types";
+import type { AuthUser, FolderTreeResponse, SaveSessionResponse, StorageScope, UserListItem } from "./types";
 
 const API = import.meta.env.VITE_API_BASE_URL;
 const ENABLE_DEV_AUTH_BYPASS = import.meta.env.VITE_ENABLE_DEV_AUTH_BYPASS === "true";
@@ -78,6 +78,48 @@ export function fetchUsers(query: string, limit = 5) {
     limit: String(limit),
   });
   return fetchJson<UserListItem[]>(`/auth/users?${params.toString()}`);
+}
+
+export function fetchFolderTree() {
+  return fetchJson<FolderTreeResponse>("/files/tree");
+}
+
+export function createFolder(scope: StorageScope, name: string, parentPath: string | null) {
+  return fetchJson<{ name: string; path: string; scope: StorageScope }>("/files/folders", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      scope,
+      name,
+      parent_path: parentPath,
+    }),
+  });
+}
+
+export async function saveSession(
+  originalImage: File,
+  maskBlob: Blob,
+  scope: StorageScope,
+  parentPath: string | null,
+) {
+  const originalStem = originalImage.name.replace(/\.[^.]+$/, "") || "image";
+  const formData = new FormData();
+  formData.append("original_image", originalImage);
+  formData.append("mask_image", new File([maskBlob], `${originalStem}_mask.png`, { type: "image/png" }));
+  formData.append("scope", scope);
+  formData.append("parent_path", parentPath ?? "");
+
+  const response = await fetch(`${API}/files/save-session`, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(await readError(response));
+  }
+
+  return response.json() as Promise<SaveSessionResponse>;
 }
 
 export async function samSegment(file: File, prompt: any) {
