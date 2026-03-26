@@ -4,7 +4,8 @@ import { Sidebar } from '../components/Sidebar'
 import { ImageCanvas } from '../components/ImageCanvas/ImageCanvas'
 import { SegmentPanel } from '../features/segment/SegmentPanel'
 import { UploadDropzone } from '../features/upload/UploadDropzone'
-import { fetchCurrentUser, login, logout, register } from '../lib/api/client'
+import { deleteUser, fetchCurrentUser, fetchUsers, login, logout, register } from '../lib/api/client'
+import type { UserListItem } from '../lib/api/types'
 import { useSessionStore } from '../lib/store/session'
 
 type AuthMode = 'login' | 'register'
@@ -12,6 +13,7 @@ type AuthMode = 'login' | 'register'
 export function App() {
   const isLoggedIn = useSessionStore((s) => s.isLoggedIn)
   const currentUser = useSessionStore((s) => s.currentUser)
+  const role = useSessionStore((s) => s.role)
   const setAuth = useSessionStore((s) => s.setAuth)
   const clearAuth = useSessionStore((s) => s.clearAuth)
   const clear = useSessionStore((s) => s.clear)
@@ -46,6 +48,12 @@ export function App() {
   const [authMode, setAuthMode] = useState<AuthMode>('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [userToDelete, setUserToDelete] = useState('')
+  const [deleteUserError, setDeleteUserError] = useState<string | null>(null)
+  const [deleteUserSuccess, setDeleteUserSuccess] = useState<string | null>(null)
+  const [isDeletingUser, setIsDeletingUser] = useState(false)
+  const [isDeleteUsersOpen, setIsDeleteUsersOpen] = useState(false)
+  const [userSuggestions, setUserSuggestions] = useState<UserListItem[]>([])
 
   useEffect(() => {
     let active = true
@@ -69,6 +77,33 @@ export function App() {
       active = false
     }
   }, [clearAuth, setAuth])
+
+  useEffect(() => {
+    if (!isLoggedIn || role !== 'admin' || !isDeleteUsersOpen) {
+      setUserSuggestions([])
+      return
+    }
+
+    const query = userToDelete.trim()
+    let active = true
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const users = await fetchUsers(query, 5)
+        if (active) {
+          setUserSuggestions(users)
+        }
+      } catch {
+        if (active) {
+          setUserSuggestions([])
+        }
+      }
+    }, 150)
+
+    return () => {
+      active = false
+      window.clearTimeout(timeoutId)
+    }
+  }, [isDeleteUsersOpen, isLoggedIn, role, userToDelete])
 
   const handleAuthSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -101,7 +136,29 @@ export function App() {
       setPassword('')
       setLoginError(null)
       setIsLoginOpen(false)
+      setIsDeleteUsersOpen(false)
+      setDeleteUserError(null)
+      setDeleteUserSuccess(null)
+      setUserToDelete('')
       setIsLoggingOut(false)
+    }
+  }
+
+  const handleDeleteUser = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setDeleteUserError(null)
+    setDeleteUserSuccess(null)
+    setIsDeletingUser(true)
+
+    try {
+      await deleteUser(userToDelete)
+      setDeleteUserSuccess(`User '${userToDelete}' deleted`)
+      setUserToDelete('')
+      setUserSuggestions((current) => current.filter((user) => user.username !== userToDelete))
+    } catch (error) {
+      setDeleteUserError(error instanceof Error ? error.message : 'Failed to delete user')
+    } finally {
+      setIsDeletingUser(false)
     }
   }
 
@@ -112,16 +169,73 @@ export function App() {
         <Header
           isLoggedIn={isLoggedIn}
           currentUser={currentUser}
+          role={role}
           onLoginClick={() => {
             setLoginError(null)
             setAuthMode('login')
             setIsLoginOpen(true)
           }}
           onLogoutClick={handleLogout}
+          onToggleDeleteUsers={() => {
+            setDeleteUserError(null)
+            setDeleteUserSuccess(null)
+            setIsDeleteUsersOpen((current) => !current)
+          }}
           isLoggingOut={isLoggingOut}
+          isDeleteUsersOpen={isDeleteUsersOpen}
         />
         <main className="flex-1 overflow-auto px-8 py-6">
           <div className="flex flex-col gap-6">
+            {isLoggedIn && role === 'admin' && isDeleteUsersOpen && (
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <header>
+                  <p className="text-sm font-semibold text-slate-800">Admin user management</p>
+                </header>
+
+                <form className="mt-4 flex flex-col gap-3 md:flex-row md:items-end" onSubmit={handleDeleteUser}>
+                  <label className="flex-1">
+                    <span className="mb-2 block text-sm font-medium text-slate-700">Username to delete</span>
+                    <input
+                      type="text"
+                      value={userToDelete}
+                      onChange={(event) => setUserToDelete(event.target.value)}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
+                      placeholder="test-user"
+                      list="admin-user-suggestions"
+                      required
+                    />
+                    <datalist id="admin-user-suggestions">
+                      {userSuggestions.map((user) => (
+                        <option key={user.username} value={user.username}>
+                          {user.role}
+                        </option>
+                      ))}
+                    </datalist>
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={isDeletingUser}
+                    className="rounded-2xl border border-red-200 px-5 py-3 text-sm font-medium text-red-700 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isDeletingUser ? 'Deleting...' : 'Delete user'}
+                  </button>
+                </form>
+
+                {deleteUserError && (
+                  <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {deleteUserError}
+                  </div>
+                )}
+
+                {deleteUserSuccess && (
+                  <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    {deleteUserSuccess}
+                  </div>
+                )}
+              </section>
+            )}
+
             {/* Upload / Preview */}
             <div className="flex gap-10">
               {imageUrl ? <ImageCanvas /> : <UploadDropzone />}

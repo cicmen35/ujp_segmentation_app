@@ -4,12 +4,24 @@ import ujpLogo from '../assets/ujp-praha.jpg'
 type HeaderProps = {
   isLoggedIn: boolean
   currentUser: string | null
+  role: 'admin' | 'user' | null
   onLoginClick: () => void
   onLogoutClick: () => void
+  onToggleDeleteUsers: () => void
   isLoggingOut: boolean
+  isDeleteUsersOpen: boolean
 }
 
-export function Header({ isLoggedIn, currentUser, onLoginClick, onLogoutClick, isLoggingOut }: HeaderProps) {
+export function Header({
+  isLoggedIn,
+  currentUser,
+  role,
+  onLoginClick,
+  onLogoutClick,
+  onToggleDeleteUsers,
+  isLoggingOut,
+  isDeleteUsersOpen,
+}: HeaderProps) {
   const dateLabel = useMemo(() => new Date().toLocaleDateString('cs-CZ', { day: '2-digit', month: 'short', year: 'numeric' }), [])
 
   return (
@@ -26,6 +38,15 @@ export function Header({ isLoggedIn, currentUser, onLoginClick, onLogoutClick, i
           {isLoggedIn ? (
             <>
               <span className="font-medium text-slate-900">{currentUser}</span>
+              {role === 'admin' && (
+                <button
+                  type="button"
+                  onClick={onToggleDeleteUsers}
+                  className="transition hover:text-slate-900"
+                >
+                  {isDeleteUsersOpen ? 'Close delete' : 'Delete user'}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onLogoutClick}
