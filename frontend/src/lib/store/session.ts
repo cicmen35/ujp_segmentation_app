@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { UserRole } from "../api/types";
+import type { StorageScope, UserRole } from "../api/types";
 
 export type SegmentationModel = 'sam' | 'in-house';
 export type PromptMode = "box" | "points" | "box + points";
@@ -23,6 +23,9 @@ type SessionState = {
   isLoggedIn: boolean;
   currentUser: string | null;
   role: UserRole | null;
+  selectedSaveScope: StorageScope | null;
+  selectedSavePath: string | null;
+  folderTreeVersion: number;
 
   // setters
   setFile: (file: File | null) => void;
@@ -35,6 +38,8 @@ type SessionState = {
   setPromptMode: (mode: PromptMode) => void;
   setAuth: (user: { username: string; role: UserRole }) => void;
   clearAuth: () => void;
+  setSelectedSaveTarget: (scope: StorageScope | null, path: string | null) => void;
+  bumpFolderTreeVersion: () => void;
 
   // utils
   clear: () => void;
@@ -51,6 +56,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   isLoggedIn: false,
   currentUser: null,
   role: null,
+  selectedSaveScope: null,
+  selectedSavePath: null,
+  folderTreeVersion: 0,
 
   setFile: (file) => {
     // cleanup starých URL
@@ -76,7 +84,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   setModel: (model) => set({ model }),
   setPromptMode: (mode) => set({ promptMode: mode }),
   setAuth: (user) => set({ isLoggedIn: true, currentUser: user.username, role: user.role }),
-  clearAuth: () => set({ isLoggedIn: false, currentUser: null, role: null }),
+  clearAuth: () => set({ isLoggedIn: false, currentUser: null, role: null, selectedSaveScope: null, selectedSavePath: null }),
+  setSelectedSaveTarget: (scope, path) => set({ selectedSaveScope: scope, selectedSavePath: path }),
+  bumpFolderTreeVersion: () => set((state) => ({ folderTreeVersion: state.folderTreeVersion + 1 })),
 
   clear: () => {
     const { imageUrl, maskUrl } = get();
