@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Response, Request, status, Query
 from pydantic import BaseModel
 import sqlite3
 import datetime
@@ -173,6 +173,61 @@ def get_current_user(request: Request, db: sqlite3.Connection = Depends(get_db))
         
     return {"id": row["id"], "username": row["username"], "role": row["role"]}
 
+
+def require_admin(user: dict = Depends(get_current_user)):
+    if user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    return user
+
+
 @router.get("/me")
 def get_me(user: dict = Depends(get_current_user)):
     return user
+
+
+@router.get("/users")
+def list_users(
+    q: str = Query(default="", max_length=100),
+    limit: int = Query(default=5, ge=1, le=20),
+    admin: dict = Depends(require_admin),
+    db: sqlite3.Connection = Depends(get_db),
+):
+    pattern = f"%{q.strip()}%"
+    cursor = db.cursor()
+    cursor.execute(
+        """
+        SELECT username, role
+        FROM users
+        WHERE username != ?
+          AND username LIKE ?
+        ORDER BY username ASC
+        LIMIT ?
+        """,
+        (admin["username"], pattern, limit),
+    )
+    rows = cursor.fetchall()
+    return [{"username": row["username"], "role": row["role"]} for row in rows]
+
+
+@router.delete("/users/{username}")
+def delete_user(
+    username: str,
+    admin: dict = Depends(require_admin),
+    db: sqlite3.Connection = Depends(get_db),
+):
+    if admin["username"] == username:
+        raise HTTPException(status_code=400, detail="Admin cannot delete their own account")
+
+    cursor = db.cursor()
+    cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+    user = cursor.fetchone()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    db.execute("DELETE FROM sessions WHERE user_id = ?", (user["id"],))
+    db.execute("DELETE FROM users WHERE id = ?", (user["id"],))
+    db.commit()
+
+    return {"message": f"User '{username}' deleted"}
