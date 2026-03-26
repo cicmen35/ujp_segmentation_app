@@ -1,6 +1,7 @@
 import type { AuthUser, UserListItem } from "./types";
 
 const API = import.meta.env.VITE_API_BASE_URL;
+const ENABLE_DEV_AUTH_BYPASS = import.meta.env.VITE_ENABLE_DEV_AUTH_BYPASS === "true";
 
 async function readError(response: Response) {
   try {
@@ -54,9 +55,21 @@ export async function logout() {
 }
 
 export async function deleteUser(username: string) {
-  await fetchJson<{ message: string }>(`/auth/users/${encodeURIComponent(username)}`, {
-    method: "DELETE",
-  });
+  const path = `/auth/users/${encodeURIComponent(username)}`;
+
+  try {
+    await fetchJson<{ message: string }>(path, {
+      method: "DELETE",
+    });
+  } catch (error) {
+    if (!ENABLE_DEV_AUTH_BYPASS || !(error instanceof Error) || !error.message.includes("Not authenticated")) {
+      throw error;
+    }
+
+    await fetchJson<{ message: string }>(`/auth/dev/users/${encodeURIComponent(username)}`, {
+      method: "DELETE",
+    });
+  }
 }
 
 export function fetchUsers(query: string, limit = 5) {
