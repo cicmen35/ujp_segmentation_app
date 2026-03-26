@@ -363,9 +363,8 @@ export function App() {
           <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Authentication</p>
                 <h2 className="mt-2 text-xl font-semibold text-slate-900">
-                  {authMode === 'login' ? 'Sign in' : 'Create account'}
+                  {authMode === 'login' ? 'Log in' : 'Register'}
                 </h2>
               </div>
               <button
@@ -418,7 +417,7 @@ export function App() {
                     ? 'Signing in...'
                     : 'Creating account...'
                   : authMode === 'login'
-                    ? 'Sign in'
+                    ? 'Log in'
                     : 'Create account'}
               </button>
             </form>
@@ -432,8 +431,8 @@ export function App() {
               className="mt-4 text-sm text-slate-500 transition hover:text-slate-900"
             >
               {authMode === 'login'
-                ? 'Need an account? Register'
-                : 'Already have an account? Sign in'}
+                ? 'Register'
+                : 'Log in'}
             </button>
           </div>
         </div>
