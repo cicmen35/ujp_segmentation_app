@@ -4,8 +4,10 @@ import { Sidebar } from '../components/Sidebar'
 import { ImageCanvas } from '../components/ImageCanvas/ImageCanvas'
 import { SegmentPanel } from '../features/segment/SegmentPanel'
 import { UploadDropzone } from '../features/upload/UploadDropzone'
-import { fetchCurrentUser, login, logout } from '../lib/api/client'
+import { fetchCurrentUser, login, logout, register } from '../lib/api/client'
 import { useSessionStore } from '../lib/store/session'
+
+type AuthMode = 'login' | 'register'
 
 export function App() {
   const isLoggedIn = useSessionStore((s) => s.isLoggedIn)
@@ -41,6 +43,7 @@ export function App() {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
   const [isLoginOpen, setIsLoginOpen] = useState(false)
+  const [authMode, setAuthMode] = useState<AuthMode>('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
@@ -67,13 +70,15 @@ export function App() {
     }
   }, [clearAuth, setAuth])
 
-  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+  const handleAuthSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setLoginError(null)
     setIsSubmittingLogin(true)
 
     try {
-      const user = await login(username, password)
+      const user = authMode === 'login'
+        ? await login(username, password)
+        : await register(username, password)
       setAuth(user)
       setIsLoginOpen(false)
       setPassword('')
@@ -109,6 +114,7 @@ export function App() {
           currentUser={currentUser}
           onLoginClick={() => {
             setLoginError(null)
+            setAuthMode('login')
             setIsLoginOpen(true)
           }}
           onLogoutClick={handleLogout}
@@ -244,7 +250,9 @@ export function App() {
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Authentication</p>
-                <h2 className="mt-2 text-xl font-semibold text-slate-900">Sign in</h2>
+                <h2 className="mt-2 text-xl font-semibold text-slate-900">
+                  {authMode === 'login' ? 'Sign in' : 'Create account'}
+                </h2>
               </div>
               <button
                 type="button"
@@ -255,7 +263,7 @@ export function App() {
               </button>
             </div>
 
-            <form className="space-y-4" onSubmit={handleLogin}>
+            <form className="space-y-4" onSubmit={handleAuthSubmit}>
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-700">Username</span>
                 <input
@@ -291,9 +299,28 @@ export function App() {
                 disabled={isSubmittingLogin}
                 className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
               >
-                {isSubmittingLogin ? 'Signing in...' : 'Sign in'}
+                {isSubmittingLogin
+                  ? authMode === 'login'
+                    ? 'Signing in...'
+                    : 'Creating account...'
+                  : authMode === 'login'
+                    ? 'Sign in'
+                    : 'Create account'}
               </button>
             </form>
+
+            <button
+              type="button"
+              onClick={() => {
+                setLoginError(null)
+                setAuthMode((current) => current === 'login' ? 'register' : 'login')
+              }}
+              className="mt-4 text-sm text-slate-500 transition hover:text-slate-900"
+            >
+              {authMode === 'login'
+                ? 'Need an account? Register'
+                : 'Already have an account? Sign in'}
+            </button>
           </div>
         </div>
       )}

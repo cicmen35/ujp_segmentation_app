@@ -37,6 +37,14 @@ export function login(username: string, password: string) {
   });
 }
 
+export function register(username: string, password: string) {
+  return fetchJson<AuthUser>("/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+}
+
 export function fetchCurrentUser() {
   return fetchJson<AuthUser>("/auth/me");
 }
