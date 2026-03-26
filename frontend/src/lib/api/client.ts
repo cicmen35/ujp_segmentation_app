@@ -1,4 +1,4 @@
-import type { AuthUser } from "./types";
+import type { AuthUser, UserListItem } from "./types";
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
@@ -51,6 +51,20 @@ export function fetchCurrentUser() {
 
 export async function logout() {
   await fetchJson<{ message: string }>("/auth/logout", { method: "POST" });
+}
+
+export async function deleteUser(username: string) {
+  await fetchJson<{ message: string }>(`/auth/users/${encodeURIComponent(username)}`, {
+    method: "DELETE",
+  });
+}
+
+export function fetchUsers(query: string, limit = 5) {
+  const params = new URLSearchParams({
+    q: query,
+    limit: String(limit),
+  });
+  return fetchJson<UserListItem[]>(`/auth/users?${params.toString()}`);
 }
 
 export async function samSegment(file: File, prompt: any) {

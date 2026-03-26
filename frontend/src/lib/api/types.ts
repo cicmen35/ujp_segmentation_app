@@ -5,3 +5,8 @@ export type AuthUser = {
   username: string;
   role: UserRole;
 };
+
+export type UserListItem = {
+  username: string;
+  role: UserRole;
+};
