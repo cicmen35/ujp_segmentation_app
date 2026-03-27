@@ -146,6 +146,8 @@ export function App() {
       setIsDeleteUsersOpen(false)
       setDeleteUserError(null)
       setDeleteUserSuccess(null)
+      setSaveSessionError(null)
+      setSaveSessionSuccess(null)
       setUserToDelete('')
       setIsLoggingOut(false)
     }
@@ -185,7 +187,11 @@ export function App() {
       setSaveSessionSuccess(`Saved to ${scope}/${result.path}`)
       bumpFolderTreeVersion()
     } catch (error) {
-      setSaveSessionError(error instanceof Error ? error.message : 'Failed to save session')
+      if (error instanceof Error && error.message === 'Not authenticated') {
+        setSaveSessionError('Session save is unavailable in the current session')
+      } else {
+        setSaveSessionError(error instanceof Error ? error.message : 'Failed to save session')
+      }
     } finally {
       setIsSavingSession(false)
     }

@@ -120,6 +120,10 @@ export function Sidebar() {
         setFolderError(null)
       } catch (error) {
         if (!active) return
+        if (error instanceof Error && error.message === 'Not authenticated') {
+          setFolderError(null)
+          return
+        }
         setFolderError(error instanceof Error ? error.message : 'Failed to load folders')
       }
     }
