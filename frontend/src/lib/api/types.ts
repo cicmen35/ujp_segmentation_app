@@ -1,4 +1,5 @@
 export type UserRole = "admin" | "user";
+export type SamPreprocessingMode = "none" | "contrast_normalization";
 
 export type AuthUser = {
   id: string;
@@ -30,4 +31,11 @@ export type SaveSessionResponse = {
   path: string;
   original_image: string;
   mask_image: string;
+};
+
+export type SegmentationPrompt = {
+  multimask: boolean;
+  box?: [number, number, number, number];
+  point_coords?: Array<[number, number]>;
+  point_labels?: Array<0 | 1>;
 };
