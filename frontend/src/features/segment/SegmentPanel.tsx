@@ -1,13 +1,12 @@
 import { samSegment } from "../../lib/api/client";
-import type { SamPreprocessingMode, SegmentationPrompt } from "../../lib/api/types";
+import type { SegmentationPrompt } from "../../lib/api/types";
 import { useSessionStore } from "../../lib/store/session";
 import { useState } from "react";
-
-const SAM_PREPROCESSING_MODE: SamPreprocessingMode = "contrast_normalization";
 
 export function SegmentPanel() {
   const file = useSessionStore((s) => s.file);
   const promptMode = useSessionStore((s) => s.promptMode);
+  const preprocessingMode = useSessionStore((s) => s.preprocessingMode);
   const boundingBox = useSessionStore((s) => s.boundingBox);
   const promptPoints = useSessionStore((s) => s.promptPoints);
   const setMaskUrl = useSessionStore((s) => s.setMaskUrl);
@@ -39,7 +38,7 @@ export function SegmentPanel() {
         prompt.point_labels = promptPoints.map((p) => p.label);
       }
 
-      const maskUrl = await samSegment(file, prompt, SAM_PREPROCESSING_MODE);
+      const maskUrl = await samSegment(file, prompt, preprocessingMode);
       setMaskUrl(maskUrl);
     } finally {
       setLoading(false);
