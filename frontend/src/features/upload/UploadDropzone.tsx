@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useSessionStore } from "../../lib/store/session";
 
 const PaperclipIcon = () => (
@@ -15,25 +15,24 @@ const PaperclipIcon = () => (
 )
 
 export function UploadDropzone() {
+  const inputId = useId()
   const inputRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState<string | null>(null)
   const setFile = useSessionStore((s) => s.setFile);
-
-  const handleSelect = () => {
-    inputRef.current?.click()
-  }
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
     setFileName(file ? file.name : null)
     setFile(file);
+
+    // Allow selecting the same file again after reset/retry.
+    event.target.value = ''
   }
 
   return (
     <div className="w-full max-w-xl">
-      <button
-        type="button"
-        onClick={handleSelect}
+      <label
+        htmlFor={inputId}
         className="group flex h-64 w-full flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50/80 text-slate-500 transition hover:border-slate-400 hover:bg-slate-100"
       >
         <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 group-hover:text-slate-700">
@@ -44,13 +43,14 @@ export function UploadDropzone() {
         </span>
         <span className="text-xs text-slate-400">PNG / TIFF</span>
         {fileName && <span className="text-xs text-slate-500">Selected: {fileName}</span>}
-      </button>
+      </label>
 
       <input
+        id={inputId}
         ref={inputRef}
         type="file"
         accept=".png,.tif,.tiff,image/png,image/tiff"
-        className="hidden"
+        className="sr-only"
         onChange={handleChange}
       />
     </div>
