@@ -6,6 +6,8 @@ import { useState } from "react";
 export function SegmentPanel() {
   const file = useSessionStore((s) => s.file);
   const promptMode = useSessionStore((s) => s.promptMode);
+  const inferenceMode = useSessionStore((s) => s.inferenceMode);
+  const patchSize = useSessionStore((s) => s.patchSize);
   const preprocessingMode = useSessionStore((s) => s.preprocessingMode);
   const preprocessingClipLimit = useSessionStore((s) => s.preprocessingClipLimit);
   const preprocessingTileGridSize = useSessionStore((s) => s.preprocessingTileGridSize);
@@ -43,6 +45,9 @@ export function SegmentPanel() {
       const maskUrl = await samSegment(file, prompt, preprocessingMode, {
         clipLimit: preprocessingClipLimit,
         tileGridSize: preprocessingTileGridSize,
+      }, {
+        mode: inferenceMode,
+        patchSize,
       });
       setMaskUrl(maskUrl);
     } finally {

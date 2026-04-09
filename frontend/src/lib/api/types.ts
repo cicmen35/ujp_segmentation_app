@@ -1,4 +1,5 @@
 export type UserRole = "admin" | "user";
+export type SamInferenceMode = "whole_image" | "patch_based";
 export type SamPreprocessingMode =
   | "none"
   | "contrast_normalization"
@@ -47,4 +48,9 @@ export type SegmentationPrompt = {
 export type PreprocessingSettings = {
   clipLimit: number;
   tileGridSize: number;
+};
+
+export type InferenceSettings = {
+  mode: SamInferenceMode;
+  patchSize: 256 | 512 | 1024;
 };

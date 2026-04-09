@@ -1,6 +1,7 @@
 import type {
   AuthUser,
   FolderTreeResponse,
+  InferenceSettings,
   PreprocessingSettings,
   SamPreprocessingMode,
   SaveSessionResponse,
@@ -136,6 +137,7 @@ export async function samSegment(
   prompt: SegmentationPrompt,
   preprocessing: SamPreprocessingMode = "none",
   preprocessingSettings?: PreprocessingSettings,
+  inferenceSettings?: InferenceSettings,
 ) {
   const fd = new FormData();
   fd.append("image", file);
@@ -143,6 +145,8 @@ export async function samSegment(
   fd.append("preprocessing", preprocessing);
   fd.append("clip_limit", String(preprocessingSettings?.clipLimit ?? 2.0));
   fd.append("tile_grid_size", String(preprocessingSettings?.tileGridSize ?? 8));
+  fd.append("inference_mode", inferenceSettings?.mode ?? "whole_image");
+  fd.append("patch_size", String(inferenceSettings?.patchSize ?? 512));
 
   const res = await fetch(`${API}/sam/segment`, {
     method: "POST",

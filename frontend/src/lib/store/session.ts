@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { SamPreprocessingMode, StorageScope, UserRole } from "../api/types";
+import type { SamInferenceMode, SamPreprocessingMode, StorageScope, UserRole } from "../api/types";
 
 export type SegmentationModel = 'sam' | 'in-house';
 export type PromptMode = "box" | "points" | "box + points";
@@ -20,6 +20,8 @@ type SessionState = {
   // UI/config
   model: SegmentationModel;
   promptMode: PromptMode;
+  inferenceMode: SamInferenceMode;
+  patchSize: 256 | 512 | 1024;
   preprocessingMode: SamPreprocessingMode;
   preprocessingClipLimit: number;
   preprocessingTileGridSize: number;
@@ -39,6 +41,8 @@ type SessionState = {
   clearPromptPoints: () => void;
   setModel: (model: SegmentationModel) => void;
   setPromptMode: (mode: PromptMode) => void;
+  setInferenceMode: (mode: SamInferenceMode) => void;
+  setPatchSize: (size: 256 | 512 | 1024) => void;
   setPreprocessingMode: (mode: SamPreprocessingMode) => void;
   setPreprocessingClipLimit: (value: number) => void;
   setPreprocessingTileGridSize: (value: number) => void;
@@ -59,6 +63,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   promptPoints: [],
   model: 'sam',
   promptMode: 'box',
+  inferenceMode: 'whole_image',
+  patchSize: 512,
   preprocessingMode: 'none',
   preprocessingClipLimit: 2,
   preprocessingTileGridSize: 8,
@@ -92,6 +98,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   clearPromptPoints: () => set({ promptPoints: [] }),
   setModel: (model) => set({ model }),
   setPromptMode: (mode) => set({ promptMode: mode }),
+  setInferenceMode: (mode) => set({ inferenceMode: mode }),
+  setPatchSize: (size) => set({ patchSize: size }),
   setPreprocessingMode: (mode) => set({ preprocessingMode: mode }),
   setPreprocessingClipLimit: (value) => set({ preprocessingClipLimit: value }),
   setPreprocessingTileGridSize: (value) => set({ preprocessingTileGridSize: value }),
@@ -112,6 +120,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       promptPoints: [],
       model: 'sam',
       promptMode: 'box',
+      inferenceMode: 'whole_image',
+      patchSize: 512,
       preprocessingMode: 'none',
       preprocessingClipLimit: 2,
       preprocessingTileGridSize: 8,
