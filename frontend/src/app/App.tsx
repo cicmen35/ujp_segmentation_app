@@ -469,9 +469,20 @@ export function App() {
                       />
                       <span>Histogram normalization</span>
                     </label>
+
+                    <label className="flex items-center gap-3 text-sm text-slate-600">
+                      <input
+                        type="radio"
+                        name="preprocessing"
+                        className="accent-slate-900"
+                        checked={preprocessingMode === 'histogram_and_contrast_normalization'}
+                        onChange={() => setPreprocessingMode('histogram_and_contrast_normalization')}
+                      />
+                      <span>Histogram + contrast normalization</span>
+                    </label>
                   </div>
 
-                  {preprocessingMode === 'contrast_normalization' && (
+                  {(preprocessingMode === 'contrast_normalization' || preprocessingMode === 'histogram_and_contrast_normalization') && (
                     <div className="mt-5 grid gap-4 border-t border-slate-100 pt-4">
                       <label className="grid gap-2">
                         <div className="flex items-center justify-between text-sm text-slate-600">

@@ -1,5 +1,9 @@
 export type UserRole = "admin" | "user";
-export type SamPreprocessingMode = "none" | "contrast_normalization" | "histogram_normalization";
+export type SamPreprocessingMode =
+  | "none"
+  | "contrast_normalization"
+  | "histogram_normalization"
+  | "histogram_and_contrast_normalization";
 
 export type AuthUser = {
   id: string;
