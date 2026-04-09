@@ -57,6 +57,10 @@ export function App() {
   const setPromptMode = useSessionStore((s) => s.setPromptMode)
   const preprocessingMode = useSessionStore((s) => s.preprocessingMode)
   const setPreprocessingMode = useSessionStore((s) => s.setPreprocessingMode)
+  const preprocessingClipLimit = useSessionStore((s) => s.preprocessingClipLimit)
+  const setPreprocessingClipLimit = useSessionStore((s) => s.setPreprocessingClipLimit)
+  const preprocessingTileGridSize = useSessionStore((s) => s.preprocessingTileGridSize)
+  const setPreprocessingTileGridSize = useSessionStore((s) => s.setPreprocessingTileGridSize)
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
@@ -455,6 +459,50 @@ export function App() {
                       <span>Contrast normalization</span>
                     </label>
                   </div>
+
+                  {preprocessingMode === 'contrast_normalization' && (
+                    <div className="mt-5 grid gap-4 border-t border-slate-100 pt-4">
+                      <label className="grid gap-2">
+                        <div className="flex items-center justify-between text-sm text-slate-600">
+                          <span>Clip limit</span>
+                          <span className="font-medium text-slate-900">{preprocessingClipLimit.toFixed(1)}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="1"
+                          max="10"
+                          step="0.5"
+                          value={preprocessingClipLimit}
+                          onChange={(event) => setPreprocessingClipLimit(Number(event.target.value))}
+                          className="w-full accent-slate-900"
+                        />
+                        <div className="flex justify-between text-[11px] text-slate-400">
+                          <span>1.0</span>
+                          <span>10.0</span>
+                        </div>
+                      </label>
+
+                      <label className="grid gap-2">
+                        <div className="flex items-center justify-between text-sm text-slate-600">
+                          <span>Tile grid size</span>
+                          <span className="font-medium text-slate-900">{preprocessingTileGridSize}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="2"
+                          max="32"
+                          step="1"
+                          value={preprocessingTileGridSize}
+                          onChange={(event) => setPreprocessingTileGridSize(Number(event.target.value))}
+                          className="w-full accent-slate-900"
+                        />
+                        <div className="flex justify-between text-[11px] text-slate-400">
+                          <span>2</span>
+                          <span>32</span>
+                        </div>
+                      </label>
+                    </div>
+                  )}
                 </section>
               )}
             </div>
