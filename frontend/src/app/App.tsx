@@ -55,6 +55,10 @@ export function App() {
 
   const promptMode = useSessionStore((s) => s.promptMode)
   const setPromptMode = useSessionStore((s) => s.setPromptMode)
+  const inferenceMode = useSessionStore((s) => s.inferenceMode)
+  const setInferenceMode = useSessionStore((s) => s.setInferenceMode)
+  const patchSize = useSessionStore((s) => s.patchSize)
+  const setPatchSize = useSessionStore((s) => s.setPatchSize)
   const preprocessingMode = useSessionStore((s) => s.preprocessingMode)
   const setPreprocessingMode = useSessionStore((s) => s.setPreprocessingMode)
   const preprocessingClipLimit = useSessionStore((s) => s.preprocessingClipLimit)
@@ -354,7 +358,7 @@ export function App() {
             )}
 
             {/* Settings */}
-            <div className="mt-4 grid gap-6 md:grid-cols-3">
+            <div className="mt-4 grid gap-6 md:grid-cols-4">
               {/* Model selection */}
               <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <header className="flex items-center justify-between">
@@ -427,6 +431,77 @@ export function App() {
                       <span>Box + pos / neg points</span>
                     </label>
                   </div>
+                </section>
+              )}
+
+              {model === 'sam' && (
+                <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <header>
+                    <p className="text-sm font-semibold text-slate-800">Inference mode</p>
+                  </header>
+
+                  <div className="mt-4 grid gap-3">
+                    <label className="flex items-center gap-3 text-sm text-slate-600">
+                      <input
+                        type="radio"
+                        name="inference_mode"
+                        className="accent-slate-900"
+                        checked={inferenceMode === 'whole_image'}
+                        onChange={() => setInferenceMode('whole_image')}
+                      />
+                      <span>Whole image</span>
+                    </label>
+
+                    <label className="flex items-center gap-3 text-sm text-slate-600">
+                      <input
+                        type="radio"
+                        name="inference_mode"
+                        className="accent-slate-900"
+                        checked={inferenceMode === 'patch_based'}
+                        onChange={() => setInferenceMode('patch_based')}
+                      />
+                      <span>Patch-based</span>
+                    </label>
+                  </div>
+
+                  {inferenceMode === 'patch_based' && (
+                    <div className="mt-5 grid gap-3 border-t border-slate-100 pt-4">
+                      <p className="text-sm text-slate-600">Patch size</p>
+
+                      <label className="flex items-center gap-3 text-sm text-slate-600">
+                        <input
+                          type="radio"
+                          name="patch_size"
+                          className="accent-slate-900"
+                          checked={patchSize === 256}
+                          onChange={() => setPatchSize(256)}
+                        />
+                        <span>256 x 256</span>
+                      </label>
+
+                      <label className="flex items-center gap-3 text-sm text-slate-600">
+                        <input
+                          type="radio"
+                          name="patch_size"
+                          className="accent-slate-900"
+                          checked={patchSize === 512}
+                          onChange={() => setPatchSize(512)}
+                        />
+                        <span>512 x 512</span>
+                      </label>
+
+                      <label className="flex items-center gap-3 text-sm text-slate-600">
+                        <input
+                          type="radio"
+                          name="patch_size"
+                          className="accent-slate-900"
+                          checked={patchSize === 1024}
+                          onChange={() => setPatchSize(1024)}
+                        />
+                        <span>1024 x 1024</span>
+                      </label>
+                    </div>
+                  )}
                 </section>
               )}
 
