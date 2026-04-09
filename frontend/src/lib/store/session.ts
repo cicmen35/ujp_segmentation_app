@@ -21,6 +21,8 @@ type SessionState = {
   model: SegmentationModel;
   promptMode: PromptMode;
   preprocessingMode: SamPreprocessingMode;
+  preprocessingClipLimit: number;
+  preprocessingTileGridSize: number;
   isLoggedIn: boolean;
   currentUser: string | null;
   role: UserRole | null;
@@ -38,6 +40,8 @@ type SessionState = {
   setModel: (model: SegmentationModel) => void;
   setPromptMode: (mode: PromptMode) => void;
   setPreprocessingMode: (mode: SamPreprocessingMode) => void;
+  setPreprocessingClipLimit: (value: number) => void;
+  setPreprocessingTileGridSize: (value: number) => void;
   setAuth: (user: { username: string; role: UserRole }) => void;
   clearAuth: () => void;
   setSelectedSaveTarget: (scope: StorageScope | null, path: string | null) => void;
@@ -56,6 +60,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   model: 'sam',
   promptMode: 'box',
   preprocessingMode: 'none',
+  preprocessingClipLimit: 2,
+  preprocessingTileGridSize: 8,
   isLoggedIn: false,
   currentUser: null,
   role: null,
@@ -87,6 +93,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   setModel: (model) => set({ model }),
   setPromptMode: (mode) => set({ promptMode: mode }),
   setPreprocessingMode: (mode) => set({ preprocessingMode: mode }),
+  setPreprocessingClipLimit: (value) => set({ preprocessingClipLimit: value }),
+  setPreprocessingTileGridSize: (value) => set({ preprocessingTileGridSize: value }),
   setAuth: (user) => set({ isLoggedIn: true, currentUser: user.username, role: user.role }),
   clearAuth: () => set({ isLoggedIn: false, currentUser: null, role: null, selectedSaveScope: null, selectedSavePath: null }),
   setSelectedSaveTarget: (scope, path) => set({ selectedSaveScope: scope, selectedSavePath: path }),
@@ -96,6 +104,17 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const { imageUrl, maskUrl } = get();
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     if (maskUrl) URL.revokeObjectURL(maskUrl);
-    set({ file: null, imageUrl: null, maskUrl: null, boundingBox: null, promptPoints: [], model: 'sam', promptMode: 'box', preprocessingMode: 'none' });
+    set({
+      file: null,
+      imageUrl: null,
+      maskUrl: null,
+      boundingBox: null,
+      promptPoints: [],
+      model: 'sam',
+      promptMode: 'box',
+      preprocessingMode: 'none',
+      preprocessingClipLimit: 2,
+      preprocessingTileGridSize: 8,
+    });
   },
 }));

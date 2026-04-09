@@ -1,6 +1,7 @@
 import type {
   AuthUser,
   FolderTreeResponse,
+  PreprocessingSettings,
   SamPreprocessingMode,
   SaveSessionResponse,
   SegmentationPrompt,
@@ -134,11 +135,14 @@ export async function samSegment(
   file: File,
   prompt: SegmentationPrompt,
   preprocessing: SamPreprocessingMode = "none",
+  preprocessingSettings?: PreprocessingSettings,
 ) {
   const fd = new FormData();
   fd.append("image", file);
   fd.append("prompt", JSON.stringify(prompt));
   fd.append("preprocessing", preprocessing);
+  fd.append("clip_limit", String(preprocessingSettings?.clipLimit ?? 2.0));
+  fd.append("tile_grid_size", String(preprocessingSettings?.tileGridSize ?? 8));
 
   const res = await fetch(`${API}/sam/segment`, {
     method: "POST",

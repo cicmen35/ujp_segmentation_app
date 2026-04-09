@@ -39,3 +39,8 @@ export type SegmentationPrompt = {
   point_coords?: Array<[number, number]>;
   point_labels?: Array<0 | 1>;
 };
+
+export type PreprocessingSettings = {
+  clipLimit: number;
+  tileGridSize: number;
+};
