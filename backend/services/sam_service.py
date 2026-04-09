@@ -35,17 +35,34 @@ def _decode_image(data: bytes) -> np.ndarray:
 	return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
-def _apply_preprocessing(img: np.ndarray, preprocessing: str) -> np.ndarray:
+def _validate_clahe_settings(clip_limit: float, tile_grid_size: int) -> tuple[float, int]:
+	if clip_limit < 1.0 or clip_limit > 10.0:
+		raise HTTPException(status_code=400, detail="clip_limit must be between 1.0 and 10.0")
+
+	if tile_grid_size < 2 or tile_grid_size > 32:
+		raise HTTPException(status_code=400, detail="tile_grid_size must be between 2 and 32")
+
+	return clip_limit, tile_grid_size
+
+
+def _apply_preprocessing(
+	img: np.ndarray,
+	preprocessing: str,
+	clip_limit: float = 2.0,
+	tile_grid_size: int = 8,
+) -> np.ndarray:
 	if preprocessing == "none":
 		return img
 
 	if preprocessing != "contrast_normalization":
 		raise HTTPException(status_code=400, detail=f"Unsupported preprocessing mode: {preprocessing}")
 
+	clip_limit, tile_grid_size = _validate_clahe_settings(clip_limit, tile_grid_size)
+
 	# Enhance local contrast while preserving color channels for SAM input.
 	lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
 	l_channel, a_channel, b_channel = cv2.split(lab)
-	clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+	clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=(tile_grid_size, tile_grid_size))
 	enhanced_l = clahe.apply(l_channel)
 	enhanced_lab = cv2.merge((enhanced_l, a_channel, b_channel))
 	return cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2RGB)
@@ -87,11 +104,27 @@ def _parse_prompt(prompt_json: str) -> tuple[np.ndarray | None, np.ndarray | Non
 	return box, point_coords, point_labels, multimask
 
 
-async def run_sam(image_file, prompt_json: str, preprocessing: str = "none") -> bytes:
+async def run_sam(
+	image_file,
+	prompt_json: str,
+	preprocessing: str = "none",
+	clip_limit: float = 2.0,
+	tile_grid_size: int = 8,
+) -> bytes:
 	data = await image_file.read()
 	img = _decode_image(data)
-	img = _apply_preprocessing(img, preprocessing)
-	LOGGER.info("Running SAM segmentation with preprocessing=%s", preprocessing)
+	img = _apply_preprocessing(
+		img,
+		preprocessing,
+		clip_limit=clip_limit,
+		tile_grid_size=tile_grid_size,
+	)
+	LOGGER.info(
+		"Running SAM segmentation with preprocessing=%s clip_limit=%s tile_grid_size=%s",
+		preprocessing,
+		clip_limit,
+		tile_grid_size,
+	)
 
 	predictor.set_image(img)
 

@@ -10,6 +10,14 @@ async def segment(
 	image: UploadFile = File(...),
 	prompt: str = Form(...),
 	preprocessing: str = Form("none"),
+	clip_limit: float = Form(2.0),
+	tile_grid_size: int = Form(8),
 ):
-	mask_png = await run_sam(image, prompt, preprocessing)
+	mask_png = await run_sam(
+		image,
+		prompt,
+		preprocessing,
+		clip_limit=clip_limit,
+		tile_grid_size=tile_grid_size,
+	)
 	return Response(content=mask_png, media_type="image/png")
