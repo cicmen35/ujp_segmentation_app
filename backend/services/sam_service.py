@@ -25,7 +25,7 @@ sam = sam_model_registry[MODEL_TYPE](checkpoint=str(CHECKPOINT))
 sam.to("cpu")
 predictor = SamPredictor(sam)
 LOGGER = logging.getLogger(__name__)
-SUPPORTED_PREPROCESSING = {"none", "contrast_normalization"}
+SUPPORTED_PREPROCESSING = {"none", "contrast_normalization", "histogram_normalization"}
 
 
 def _decode_image(data: bytes) -> np.ndarray:
@@ -54,8 +54,16 @@ def _apply_preprocessing(
 	if preprocessing == "none":
 		return img
 
-	if preprocessing != "contrast_normalization":
+	if preprocessing not in SUPPORTED_PREPROCESSING:
 		raise HTTPException(status_code=400, detail=f"Unsupported preprocessing mode: {preprocessing}")
+
+	if preprocessing == "histogram_normalization":
+		# Stretch luminance values to the full range while preserving chromatic channels.
+		lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
+		l_channel, a_channel, b_channel = cv2.split(lab)
+		normalized_l = cv2.normalize(l_channel, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+		normalized_lab = cv2.merge((normalized_l, a_channel, b_channel))
+		return cv2.cvtColor(normalized_lab, cv2.COLOR_LAB2RGB)
 
 	clip_limit, tile_grid_size = _validate_clahe_settings(clip_limit, tile_grid_size)
 
