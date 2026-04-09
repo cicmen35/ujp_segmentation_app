@@ -25,7 +25,12 @@ sam = sam_model_registry[MODEL_TYPE](checkpoint=str(CHECKPOINT))
 sam.to("cpu")
 predictor = SamPredictor(sam)
 LOGGER = logging.getLogger(__name__)
-SUPPORTED_PREPROCESSING = {"none", "contrast_normalization", "histogram_normalization"}
+SUPPORTED_PREPROCESSING = {
+	"none",
+	"contrast_normalization",
+	"histogram_normalization",
+	"histogram_and_contrast_normalization",
+}
 
 
 def _decode_image(data: bytes) -> np.ndarray:
@@ -45,6 +50,27 @@ def _validate_clahe_settings(clip_limit: float, tile_grid_size: int) -> tuple[fl
 	return clip_limit, tile_grid_size
 
 
+def _apply_histogram_normalization(img: np.ndarray) -> np.ndarray:
+	# Stretch luminance values to the full range while preserving chromatic channels.
+	lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
+	l_channel, a_channel, b_channel = cv2.split(lab)
+	normalized_l = cv2.normalize(l_channel, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+	normalized_lab = cv2.merge((normalized_l, a_channel, b_channel))
+	return cv2.cvtColor(normalized_lab, cv2.COLOR_LAB2RGB)
+
+
+def _apply_contrast_normalization(img: np.ndarray, clip_limit: float, tile_grid_size: int) -> np.ndarray:
+	clip_limit, tile_grid_size = _validate_clahe_settings(clip_limit, tile_grid_size)
+
+	# Enhance local contrast while preserving color channels for SAM input.
+	lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
+	l_channel, a_channel, b_channel = cv2.split(lab)
+	clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=(tile_grid_size, tile_grid_size))
+	enhanced_l = clahe.apply(l_channel)
+	enhanced_lab = cv2.merge((enhanced_l, a_channel, b_channel))
+	return cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2RGB)
+
+
 def _apply_preprocessing(
 	img: np.ndarray,
 	preprocessing: str,
@@ -58,22 +84,13 @@ def _apply_preprocessing(
 		raise HTTPException(status_code=400, detail=f"Unsupported preprocessing mode: {preprocessing}")
 
 	if preprocessing == "histogram_normalization":
-		# Stretch luminance values to the full range while preserving chromatic channels.
-		lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
-		l_channel, a_channel, b_channel = cv2.split(lab)
-		normalized_l = cv2.normalize(l_channel, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
-		normalized_lab = cv2.merge((normalized_l, a_channel, b_channel))
-		return cv2.cvtColor(normalized_lab, cv2.COLOR_LAB2RGB)
+		return _apply_histogram_normalization(img)
 
-	clip_limit, tile_grid_size = _validate_clahe_settings(clip_limit, tile_grid_size)
+	if preprocessing == "histogram_and_contrast_normalization":
+		img = _apply_histogram_normalization(img)
+		return _apply_contrast_normalization(img, clip_limit, tile_grid_size)
 
-	# Enhance local contrast while preserving color channels for SAM input.
-	lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
-	l_channel, a_channel, b_channel = cv2.split(lab)
-	clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=(tile_grid_size, tile_grid_size))
-	enhanced_l = clahe.apply(l_channel)
-	enhanced_lab = cv2.merge((enhanced_l, a_channel, b_channel))
-	return cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2RGB)
+	return _apply_contrast_normalization(img, clip_limit, tile_grid_size)
 
 
 def _parse_prompt(prompt_json: str) -> tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None, bool]:
