@@ -42,6 +42,14 @@ def _decode_image(data: bytes) -> np.ndarray:
 	return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
+def _encode_rgb_png(img: np.ndarray) -> bytes:
+	bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+	success, png = cv2.imencode(".png", bgr)
+	if not success:
+		raise HTTPException(status_code=500, detail="Failed to encode SAM input image")
+	return png.tobytes()
+
+
 def _validate_clahe_settings(clip_limit: float, tile_grid_size: int) -> tuple[float, int]:
 	if clip_limit < 1.0 or clip_limit > 10.0:
 		raise HTTPException(status_code=400, detail="clip_limit must be between 1.0 and 10.0")
@@ -239,7 +247,8 @@ async def run_sam(
 	tile_grid_size: int = 8,
 	inference_mode: str = "whole_image",
 	patch_size: int = 512,
-) -> bytes:
+	include_sam_input: bool = False,
+) -> tuple[bytes, bytes | None]:
 	data = await image_file.read()
 	img = _decode_image(data)
 	inference_mode, patch_size = _validate_inference_settings(inference_mode, patch_size)
@@ -249,6 +258,7 @@ async def run_sam(
 		clip_limit=clip_limit,
 		tile_grid_size=tile_grid_size,
 	)
+	sam_input_png = _encode_rgb_png(img) if include_sam_input else None
 	LOGGER.info(
 		"Running SAM segmentation with preprocessing=%s clip_limit=%s tile_grid_size=%s",
 		preprocessing,
@@ -279,4 +289,4 @@ async def run_sam(
 	mask_img = (best_mask.astype(np.uint8) * 255).astype(np.uint8)
 
 	_, png = cv2.imencode(".png", mask_img)
-	return png.tobytes()
+	return png.tobytes(), sam_input_png
