@@ -52,5 +52,5 @@ export type PreprocessingSettings = {
 
 export type InferenceSettings = {
   mode: SamInferenceMode;
-  patchSize: 256 | 512 | 1024;
+  patchSize: 128 | 256 | 512 | 1024;
 };

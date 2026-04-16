@@ -497,6 +497,17 @@ export function App() {
                           type="radio"
                           name="patch_size"
                           className="accent-slate-900"
+                          checked={patchSize === 128}
+                          onChange={() => setPatchSize(128)}
+                        />
+                        <span>128 x 128</span>
+                      </label>
+
+                      <label className="flex items-center gap-3 text-sm text-slate-600">
+                        <input
+                          type="radio"
+                          name="patch_size"
+                          className="accent-slate-900"
                           checked={patchSize === 256}
                           onChange={() => setPatchSize(256)}
                         />

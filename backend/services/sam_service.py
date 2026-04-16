@@ -32,7 +32,7 @@ SUPPORTED_PREPROCESSING = {
 	"histogram_and_contrast_normalization",
 }
 SUPPORTED_INFERENCE_MODES = {"whole_image", "patch_based"}
-SUPPORTED_PATCH_SIZES = {256, 512, 1024}
+SUPPORTED_PATCH_SIZES = {128, 256, 512, 1024}
 
 
 def _decode_image(data: bytes) -> np.ndarray:

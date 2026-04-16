@@ -22,7 +22,7 @@ type SessionState = {
   model: SegmentationModel;
   promptMode: PromptMode;
   inferenceMode: SamInferenceMode;
-  patchSize: 256 | 512 | 1024;
+  patchSize: 128 | 256 | 512 | 1024;
   preprocessingMode: SamPreprocessingMode;
   preprocessingClipLimit: number;
   preprocessingTileGridSize: number;
@@ -44,7 +44,7 @@ type SessionState = {
   setModel: (model: SegmentationModel) => void;
   setPromptMode: (mode: PromptMode) => void;
   setInferenceMode: (mode: SamInferenceMode) => void;
-  setPatchSize: (size: 256 | 512 | 1024) => void;
+  setPatchSize: (size: 128 | 256 | 512 | 1024) => void;
   setPreprocessingMode: (mode: SamPreprocessingMode) => void;
   setPreprocessingClipLimit: (value: number) => void;
   setPreprocessingTileGridSize: (value: number) => void;
