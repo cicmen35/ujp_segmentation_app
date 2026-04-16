@@ -12,6 +12,7 @@ type SessionState = {
   file: File | null;
   imageUrl: string | null;
   maskUrl: string | null;
+  samInputUrl: string | null;
 
   // prompts
   boundingBox: BoundingBox | null;
@@ -35,6 +36,7 @@ type SessionState = {
   // setters
   setFile: (file: File | null) => void;
   setMaskUrl: (url: string | null) => void;
+  setSamInputUrl: (url: string | null) => void;
   setBoundingBox: (box: BoundingBox | null) => void;
   addPromptPoint: (point: PromptPoint) => void;
   removeLastPoint: () => void;
@@ -59,6 +61,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   file: null,
   imageUrl: null,
   maskUrl: null,
+  samInputUrl: null,
   boundingBox: null,
   promptPoints: [],
   model: 'sam',
@@ -77,20 +80,27 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   setFile: (file) => {
     // cleanup starých URL
-    const { imageUrl, maskUrl } = get();
+    const { imageUrl, maskUrl, samInputUrl } = get();
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     if (maskUrl) URL.revokeObjectURL(maskUrl);
+    if (samInputUrl) URL.revokeObjectURL(samInputUrl);
 
     set({
       file,
       imageUrl: file ? URL.createObjectURL(file) : null,
       maskUrl: null,
+      samInputUrl: null,
     });
   },
   setMaskUrl: (url) => {
     const { maskUrl } = get();
     if (maskUrl) URL.revokeObjectURL(maskUrl);
     set({ maskUrl: url });
+  },
+  setSamInputUrl: (url) => {
+    const { samInputUrl } = get();
+    if (samInputUrl) URL.revokeObjectURL(samInputUrl);
+    set({ samInputUrl: url });
   },
   setBoundingBox: (box) => set({ boundingBox: box }),
   addPromptPoint: (point) => set((s) => ({ promptPoints: [...s.promptPoints, point] })),
@@ -109,13 +119,15 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   bumpFolderTreeVersion: () => set((state) => ({ folderTreeVersion: state.folderTreeVersion + 1 })),
 
   clear: () => {
-    const { imageUrl, maskUrl } = get();
+    const { imageUrl, maskUrl, samInputUrl } = get();
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     if (maskUrl) URL.revokeObjectURL(maskUrl);
+    if (samInputUrl) URL.revokeObjectURL(samInputUrl);
     set({
       file: null,
       imageUrl: null,
       maskUrl: null,
+      samInputUrl: null,
       boundingBox: null,
       promptPoints: [],
       model: 'sam',
