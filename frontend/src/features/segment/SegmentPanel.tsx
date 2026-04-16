@@ -14,6 +14,7 @@ export function SegmentPanel() {
   const boundingBox = useSessionStore((s) => s.boundingBox);
   const promptPoints = useSessionStore((s) => s.promptPoints);
   const setMaskUrl = useSessionStore((s) => s.setMaskUrl);
+  const setSamInputUrl = useSessionStore((s) => s.setSamInputUrl);
   const [loading, setLoading] = useState(false);
 
   // Determine if we have enough prompt data
@@ -42,14 +43,15 @@ export function SegmentPanel() {
         prompt.point_labels = promptPoints.map((p) => p.label);
       }
 
-      const maskUrl = await samSegment(file, prompt, preprocessingMode, {
+      const result = await samSegment(file, prompt, preprocessingMode, {
         clipLimit: preprocessingClipLimit,
         tileGridSize: preprocessingTileGridSize,
       }, {
         mode: inferenceMode,
         patchSize,
       });
-      setMaskUrl(maskUrl);
+      setMaskUrl(result.maskUrl);
+      setSamInputUrl(result.samInputUrl);
     } finally {
       setLoading(false);
     }

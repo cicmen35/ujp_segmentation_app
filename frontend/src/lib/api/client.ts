@@ -40,6 +40,16 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+function objectUrlFromBase64Png(value: string) {
+  const binary = window.atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
+}
+
 export function login(username: string, password: string) {
   return fetchJson<AuthUser>("/auth/login", {
     method: "POST",
@@ -147,6 +157,7 @@ export async function samSegment(
   fd.append("tile_grid_size", String(preprocessingSettings?.tileGridSize ?? 8));
   fd.append("inference_mode", inferenceSettings?.mode ?? "whole_image");
   fd.append("patch_size", String(inferenceSettings?.patchSize ?? 512));
+  fd.append("include_sam_input", "true");
 
   const res = await fetch(`${API}/sam/segment`, {
     method: "POST",
@@ -155,6 +166,9 @@ export async function samSegment(
   });
   if (!res.ok) throw new Error(await res.text());
 
-  const blob = await res.blob(); // image/png
-  return URL.createObjectURL(blob);
+  const data = await res.json() as { mask_png: string; sam_input_png: string };
+  return {
+    maskUrl: objectUrlFromBase64Png(data.mask_png),
+    samInputUrl: objectUrlFromBase64Png(data.sam_input_png),
+  };
 }

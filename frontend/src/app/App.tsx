@@ -21,6 +21,23 @@ function buildMaskFileName(fileName: string) {
   return `${stem}_mask.png`
 }
 
+function buildSamInputFileName(fileName: string) {
+  const dotIndex = fileName.lastIndexOf('.')
+  if (dotIndex <= 0) {
+    return `${fileName || 'image'}_sam_input.png`
+  }
+
+  const stem = fileName.slice(0, dotIndex)
+  return `${stem}_sam_input.png`
+}
+
+function downloadUrl(url: string, fileName: string) {
+  const a = document.createElement("a")
+  a.href = url
+  a.download = fileName
+  a.click()
+}
+
 export function App() {
   const isLoggedIn = useSessionStore((s) => s.isLoggedIn)
   const currentUser = useSessionStore((s) => s.currentUser)
@@ -33,6 +50,7 @@ export function App() {
   const clear = useSessionStore((s) => s.clear)
   const imageUrl = useSessionStore((s) => s.imageUrl)
   const maskUrl = useSessionStore((s) => s.maskUrl)
+  const samInputUrl = useSessionStore((s) => s.samInputUrl)
 
   const boundingBox = useSessionStore((s) => s.boundingBox)
   const setBoundingBox = useSessionStore((s) => s.setBoundingBox)
@@ -217,6 +235,18 @@ export function App() {
     }
   }
 
+  const handleSaveMask = () => {
+    if (!maskUrl) return
+
+    const file = useSessionStore.getState().file
+    const fileName = file?.name ?? "image.png"
+    downloadUrl(maskUrl, buildMaskFileName(fileName))
+
+    if (samInputUrl) {
+      downloadUrl(samInputUrl, buildSamInputFileName(fileName))
+    }
+  }
+
   return (
     <div className="flex h-screen bg-white">
       {isLoggedIn && <Sidebar />}
@@ -330,13 +360,7 @@ export function App() {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      const file = useSessionStore.getState().file
-                      const a = document.createElement("a");
-                      a.href = maskUrl;
-                      a.download = buildMaskFileName(file?.name ?? "image.png");
-                      a.click();
-                    }}
+                    onClick={handleSaveMask}
                     className="rounded-full border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
                   >
                     Save mask
