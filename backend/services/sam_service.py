@@ -61,10 +61,10 @@ def _validate_clahe_settings(clip_limit: float, tile_grid_size: int) -> tuple[fl
 
 
 def _apply_histogram_normalization(img: np.ndarray) -> np.ndarray:
-	# Stretch luminance values to the full range while preserving chromatic channels.
+	# Equalize the global luminance histogram while preserving chromatic channels.
 	lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
 	l_channel, a_channel, b_channel = cv2.split(lab)
-	normalized_l = cv2.normalize(l_channel, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+	normalized_l = cv2.equalizeHist(l_channel)
 	normalized_lab = cv2.merge((normalized_l, a_channel, b_channel))
 	return cv2.cvtColor(normalized_lab, cv2.COLOR_LAB2RGB)
 
