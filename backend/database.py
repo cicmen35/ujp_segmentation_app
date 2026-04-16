@@ -4,7 +4,7 @@ from pathlib import Path
 DB_FILE = Path(__file__).resolve().parent / "data" / "app.db"
 
 def get_db():
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     try:
         yield conn
@@ -15,7 +15,7 @@ def init_db():
     # Ensure directory exists
     DB_FILE.parent.mkdir(parents=True, exist_ok=True)
     
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
     cursor = conn.cursor()
     
     # Users table
