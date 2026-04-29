@@ -42,14 +42,14 @@ export function UploadDropzone() {
         <span className="text-base font-medium text-slate-600 group-hover:text-slate-900">
           {fileName ? 'Replace image' : 'Insert image'}
         </span>
-        <span className="text-xs text-slate-400">PNG / TIFF</span>
+        <span className="text-xs text-slate-400">PNG / JPG / TIFF</span>
         {fileName && <span className="text-xs text-slate-500">Selected: {fileName}</span>}
       </button>
 
       <input
         ref={inputRef}
         type="file"
-        accept=".png,.tif,.tiff,image/png,image/tiff"
+        accept=".png,.jpg,.jpeg,.tif,.tiff,image/png,image/jpeg,image/tiff"
         className="hidden"
         onChange={handleChange}
       />
