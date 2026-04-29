@@ -58,4 +58,4 @@ docker-compose up -d
 
 ## Demo
 
-*(A video demonstration will be uploaded here).*
+[![Watch the demo](https://img.youtube.com/vi/3brko6lT9Yg/0.jpg)](https://www.youtube.com/watch?v=3brko6lT9Yg)
