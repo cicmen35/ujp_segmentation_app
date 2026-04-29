@@ -13,6 +13,8 @@ export type UserListItem = {
 
 export type StorageScope = "shared" | "private";
 
+export type SamPreprocessingMode = "none" | "contrast_change";
+
 export type FolderNode = {
   name: string;
   path: string;

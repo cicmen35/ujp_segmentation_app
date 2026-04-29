@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { StorageScope, UserRole } from "../api/types";
+import type { SamPreprocessingMode, StorageScope, UserRole } from "../api/types";
 
 export type SegmentationModel = 'sam' | 'in-house';
 export type PromptMode = "box" | "points" | "box + points";
@@ -20,6 +20,7 @@ type SessionState = {
   // UI/config
   model: SegmentationModel;
   promptMode: PromptMode;
+  preprocessingMode: SamPreprocessingMode;
   isLoggedIn: boolean;
   currentUser: string | null;
   role: UserRole | null;
@@ -36,6 +37,7 @@ type SessionState = {
   clearPromptPoints: () => void;
   setModel: (model: SegmentationModel) => void;
   setPromptMode: (mode: PromptMode) => void;
+  setPreprocessingMode: (mode: SamPreprocessingMode) => void;
   setAuth: (user: { username: string; role: UserRole }) => void;
   clearAuth: () => void;
   setSelectedSaveTarget: (scope: StorageScope | null, path: string | null) => void;
@@ -53,6 +55,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   promptPoints: [],
   model: 'sam',
   promptMode: 'box',
+  preprocessingMode: 'none',
   isLoggedIn: false,
   currentUser: null,
   role: null,
@@ -83,6 +86,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   clearPromptPoints: () => set({ promptPoints: [] }),
   setModel: (model) => set({ model }),
   setPromptMode: (mode) => set({ promptMode: mode }),
+  setPreprocessingMode: (mode) => set({ preprocessingMode: mode }),
   setAuth: (user) => set({ isLoggedIn: true, currentUser: user.username, role: user.role }),
   clearAuth: () => set({ isLoggedIn: false, currentUser: null, role: null, selectedSaveScope: null, selectedSavePath: null }),
   setSelectedSaveTarget: (scope, path) => set({ selectedSaveScope: scope, selectedSavePath: path }),
@@ -92,6 +96,15 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const { imageUrl, maskUrl } = get();
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     if (maskUrl) URL.revokeObjectURL(maskUrl);
-    set({ file: null, imageUrl: null, maskUrl: null, boundingBox: null, promptPoints: [], model: 'sam', promptMode: 'box' });
+    set({
+      file: null,
+      imageUrl: null,
+      maskUrl: null,
+      boundingBox: null,
+      promptPoints: [],
+      model: 'sam',
+      promptMode: 'box',
+      preprocessingMode: 'none',
+    });
   },
 }));
