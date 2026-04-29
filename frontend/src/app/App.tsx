@@ -45,6 +45,8 @@ export function App() {
 
   const promptMode = useSessionStore((s) => s.promptMode)
   const setPromptMode = useSessionStore((s) => s.setPromptMode)
+  const preprocessingMode = useSessionStore((s) => s.preprocessingMode)
+  const setPreprocessingMode = useSessionStore((s) => s.setPreprocessingMode)
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
@@ -408,6 +410,38 @@ export function App() {
                         onChange={() => setPromptMode('box + points')}
                       />
                       <span>Box + pos / neg points</span>
+                    </label>
+                  </div>
+                </section>
+              )}
+
+              {model === 'sam' && (
+                <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <header>
+                    <p className="text-sm font-semibold text-slate-800">Preprocessing</p>
+                  </header>
+
+                  <div className="mt-4 grid gap-3">
+                    <label className="flex items-center gap-3 text-sm text-slate-600">
+                      <input
+                        type="radio"
+                        name="preprocessing"
+                        className="accent-slate-900"
+                        checked={preprocessingMode === 'none'}
+                        onChange={() => setPreprocessingMode('none')}
+                      />
+                      <span>Off</span>
+                    </label>
+
+                    <label className="flex items-center gap-3 text-sm text-slate-600">
+                      <input
+                        type="radio"
+                        name="preprocessing"
+                        className="accent-slate-900"
+                        checked={preprocessingMode === 'contrast_change'}
+                        onChange={() => setPreprocessingMode('contrast_change')}
+                      />
+                      <span>Contrast change</span>
                     </label>
                   </div>
                 </section>

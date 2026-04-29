@@ -1,4 +1,4 @@
-import type { AuthUser, FolderTreeResponse, SaveSessionResponse, StorageScope, UserListItem } from "./types";
+import type { AuthUser, FolderTreeResponse, SamPreprocessingMode, SaveSessionResponse, StorageScope, UserListItem } from "./types";
 
 const API = import.meta.env.VITE_API_BASE_URL;
 const ENABLE_DEV_AUTH_BYPASS = import.meta.env.VITE_ENABLE_DEV_AUTH_BYPASS === "true";
@@ -122,10 +122,15 @@ export async function saveSession(
   return response.json() as Promise<SaveSessionResponse>;
 }
 
-export async function samSegment(file: File, prompt: any) {
+export async function samSegment(
+  file: File,
+  prompt: Record<string, unknown>,
+  preprocessing: SamPreprocessingMode = "none",
+) {
   const fd = new FormData();
   fd.append("image", file);
   fd.append("prompt", JSON.stringify(prompt));
+  fd.append("preprocessing", preprocessing);
 
   const res = await fetch(`${API}/sam/segment`, {
     method: "POST",
