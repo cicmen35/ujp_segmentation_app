@@ -28,7 +28,10 @@ function FolderTree({ nodes, scope, selectedScope, selectedPath, onSelect, depth
           <div key={`${scope}:${node.path}`}>
             <button
               type="button"
-              onClick={() => onSelect(scope, node.path)}
+              onClick={(event) => {
+                event.stopPropagation()
+                onSelect(scope, node.path)
+              }}
               className={`flex w-full items-center rounded-lg px-2 py-1.5 text-left text-sm transition ${
                 isSelected ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
               }`}
@@ -184,42 +187,36 @@ export function Sidebar() {
     const isScopeSelected = selectedSaveScope === scope
 
     return (
-      <div className="mt-3 space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Save target</p>
-          {isScopeSelected && (
-            <button
-              type="button"
-              onClick={() => setSelectedSaveTarget(null, null)}
-              className="text-xs text-slate-500 transition hover:text-slate-700"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-        <p className="text-xs text-slate-600">
-          {isScopeSelected ? selectedSavePath ?? 'Section root' : 'Section root'}
-        </p>
+      <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => void handleCreateFolder(scope, null)}
+            onClick={(event) => {
+              event.stopPropagation()
+              void handleCreateFolder(scope, null)
+            }}
             className="rounded-md bg-slate-200 px-2.5 py-1 text-xs text-slate-700 transition hover:bg-slate-300"
           >
-            Add folder here
+            New folder
           </button>
           {isScopeSelected && selectedSavePath && (
             <>
               <button
                 type="button"
-                onClick={() => void handleCreateFolder(scope, selectedSavePath)}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  void handleCreateFolder(scope, selectedSavePath)
+                }}
                 className="rounded-md bg-slate-200 px-2.5 py-1 text-xs text-slate-700 transition hover:bg-slate-300"
               >
                 Add subfolder
               </button>
               <button
                 type="button"
-                onClick={() => void handleDeleteSelectedFolder(scope)}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  void handleDeleteSelectedFolder(scope)
+                }}
                 className="rounded-md bg-red-100 px-2.5 py-1 text-xs text-red-700 transition hover:bg-red-200"
               >
                 Delete folder
@@ -235,7 +232,6 @@ export function Sidebar() {
     return (
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{label}</p>
-        <span className="text-[11px] text-slate-400">Select a folder to use it</span>
       </div>
     )
   }
@@ -246,7 +242,10 @@ export function Sidebar() {
       className="relative hidden h-full shrink-0 border-r border-slate-200 bg-slate-50 text-sm text-slate-700 md:flex"
       style={{ width }}
     >
-      <div className="flex h-full w-full flex-col px-4 py-4">
+      <div
+        className="flex h-full w-full flex-col px-4 py-4"
+        onClick={() => setSelectedSaveTarget(null, null)}
+      >
         {folderError && (
           <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
             {folderError}
@@ -275,6 +274,7 @@ export function Sidebar() {
               type="button"
               aria-label="Resize sections"
               onMouseDown={startSplitDragging}
+              onClick={(event) => event.stopPropagation()}
               className="my-2 h-2 w-full cursor-row-resize rounded-full border border-dashed border-slate-300 bg-white"
             >
               <span className="sr-only">Drag to resize sections</span>
@@ -304,6 +304,7 @@ export function Sidebar() {
         type="button"
         aria-label="Resize sidebar"
         onMouseDown={startWidthDragging}
+        onClick={(event) => event.stopPropagation()}
         className="absolute right-0 top-0 h-full w-1 cursor-col-resize bg-transparent"
       >
         <span className="sr-only">Drag to resize sidebar width</span>
