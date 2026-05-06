@@ -6,9 +6,7 @@ After=network.target
 User=your-user
 Group=www-data
 WorkingDirectory=/home/your-user/ujp_segmentation_app
-Environment="COOKIE_SAMESITE=none"
-Environment="COOKIE_SECURE=true"
-Environment="CORS_ALLOW_ORIGINS=https://your-domain.example"
+EnvironmentFile=/home/your-user/ujp_segmentation_app/deploy/backend.env
 ExecStart=/home/your-user/ujp_segmentation_app/venv/bin/uvicorn backend.app:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=3
