@@ -19,6 +19,19 @@ type FolderTreeProps = {
   depth?: number
 }
 
+function FolderIcon({ selected }: { selected: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={`h-4 w-4 shrink-0 ${selected ? 'text-white' : 'text-amber-500'}`}
+      fill="currentColor"
+    >
+      <path d="M3.75 6.75A2.25 2.25 0 0 1 6 4.5h4.061c.597 0 1.17.237 1.591.659l1.189 1.189c.14.14.33.22.53.22H18A2.25 2.25 0 0 1 20.25 8.82v7.93A2.25 2.25 0 0 1 18 19H6a2.25 2.25 0 0 1-2.25-2.25V6.75Z" />
+    </svg>
+  )
+}
+
 function FolderTree({ nodes, scope, selectedScope, selectedPath, onSelect, depth = 0 }: FolderTreeProps) {
   return (
     <div className="space-y-1">
@@ -37,7 +50,8 @@ function FolderTree({ nodes, scope, selectedScope, selectedPath, onSelect, depth
               }`}
               style={{ paddingLeft: `${depth * 14 + 8}px` }}
             >
-              {node.name}
+              <FolderIcon selected={isSelected} />
+              <span className="ml-2 truncate">{node.name}</span>
             </button>
             {node.children.length > 0 && (
               <FolderTree
