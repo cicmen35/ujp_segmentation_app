@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
-import { createFolder, fetchFolderTree } from '../lib/api/client'
+import { createFolder, deleteFolder, fetchFolderTree } from '../lib/api/client'
 import type { FolderNode, StorageScope } from '../lib/api/types'
 import { useSessionStore } from '../lib/store/session'
 
@@ -151,11 +151,9 @@ export function Sidebar() {
     document.body.style.userSelect = 'none'
   }, [])
 
-  const handleCreateFolder = async (scope: StorageScope) => {
+  const handleCreateFolder = async (scope: StorageScope, parentPath: string | null = null) => {
     const name = window.prompt('Folder name')
     if (!name) return
-
-    const parentPath = selectedSaveScope === scope ? selectedSavePath : null
 
     try {
       const created = await createFolder(scope, name, parentPath)
@@ -167,19 +165,77 @@ export function Sidebar() {
     }
   }
 
-  const renderSectionHeader = (label: string, scope: StorageScope) => {
+  const handleDeleteSelectedFolder = async (scope: StorageScope) => {
+    if (selectedSaveScope !== scope || !selectedSavePath) return
+    const confirmed = window.confirm(`Delete folder "${selectedSavePath}" and all of its contents?`)
+    if (!confirmed) return
+
+    try {
+      await deleteFolder(scope, selectedSavePath)
+      setSelectedSaveTarget(null, null)
+      bumpFolderTreeVersion()
+      setFolderError(null)
+    } catch (error) {
+      setFolderError(error instanceof Error ? error.message : 'Failed to delete folder')
+    }
+  }
+
+  const renderSelectionActions = (scope: StorageScope) => {
+    const isScopeSelected = selectedSaveScope === scope
+
+    return (
+      <div className="mt-3 space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Save target</p>
+          {isScopeSelected && (
+            <button
+              type="button"
+              onClick={() => setSelectedSaveTarget(null, null)}
+              className="text-xs text-slate-500 transition hover:text-slate-700"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-slate-600">
+          {isScopeSelected ? selectedSavePath ?? 'Section root' : 'Section root'}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => void handleCreateFolder(scope, null)}
+            className="rounded-md bg-slate-200 px-2.5 py-1 text-xs text-slate-700 transition hover:bg-slate-300"
+          >
+            Add folder here
+          </button>
+          {isScopeSelected && selectedSavePath && (
+            <>
+              <button
+                type="button"
+                onClick={() => void handleCreateFolder(scope, selectedSavePath)}
+                className="rounded-md bg-slate-200 px-2.5 py-1 text-xs text-slate-700 transition hover:bg-slate-300"
+              >
+                Add subfolder
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDeleteSelectedFolder(scope)}
+                className="rounded-md bg-red-100 px-2.5 py-1 text-xs text-red-700 transition hover:bg-red-200"
+              >
+                Delete folder
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const renderSectionHeader = (label: string) => {
     return (
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{label}</p>
-        <div className="flex items-center gap-2 text-[11px]">
-          <button
-            type="button"
-            onClick={() => void handleCreateFolder(scope)}
-            className="rounded-md bg-slate-200 px-2.5 py-1 text-slate-600 transition hover:bg-slate-300"
-          >
-            Add folder
-          </button>
-        </div>
+        <span className="text-[11px] text-slate-400">Select a folder to use it</span>
       </div>
     )
   }
@@ -202,7 +258,8 @@ export function Sidebar() {
               className="flex min-h-0 flex-col"
               style={{ flexBasis: `${splitRatio * 100}%`, flexGrow: 0, flexShrink: 0 }}
             >
-              {renderSectionHeader('Shared folders', 'shared')}
+              {renderSectionHeader('Shared folders')}
+              {renderSelectionActions('shared')}
               <div className="mt-3 flex-1 overflow-auto rounded-lg border border-dashed border-slate-300 bg-white/70 p-3">
                 <FolderTree
                   nodes={sharedFolders}
@@ -229,7 +286,8 @@ export function Sidebar() {
           className="flex min-h-0 flex-1 flex-col"
           style={isAdmin ? { flexBasis: `${(1 - splitRatio) * 100}%` } : undefined}
         >
-          {renderSectionHeader('Private folders', 'private')}
+          {renderSectionHeader('Private folders')}
+          {renderSelectionActions('private')}
           <div className="mt-3 flex-1 overflow-auto rounded-lg border border-dashed border-slate-300 bg-white/70 p-3">
             <FolderTree
               nodes={privateFolders}
