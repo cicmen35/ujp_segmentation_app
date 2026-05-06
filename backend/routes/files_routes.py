@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
+from shutil import rmtree
 import sqlite3
 
 from backend.database import get_db
@@ -64,6 +65,22 @@ def create_folder(
     target.mkdir(parents=False, exist_ok=False)
     path = str(target.relative_to(root))
     return {"name": folder_name, "path": path, "scope": request.scope}
+
+
+@router.delete("/folders")
+def delete_folder(
+    scope: str,
+    path: str,
+    user: dict = Depends(get_current_user),
+):
+    root = get_scope_root(user, scope)
+    target = resolve_relative_directory(root, path)
+
+    if target.resolve() == root.resolve():
+        raise HTTPException(status_code=400, detail="Root folder cannot be deleted")
+
+    rmtree(target)
+    return {"message": "Folder deleted"}
 
 
 @router.post("/save-session")
