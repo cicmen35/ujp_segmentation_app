@@ -1,6 +1,6 @@
 import type { AuthUser, FolderTreeResponse, SamPreprocessingMode, SaveSessionResponse, StorageScope, UserListItem } from "./types";
 
-const API = import.meta.env.VITE_API_BASE_URL;
+const API = import.meta.env.VITE_API_BASE_URL || "/api";
 const ENABLE_DEV_AUTH_BYPASS = import.meta.env.VITE_ENABLE_DEV_AUTH_BYPASS === "true";
 
 async function readError(response: Response) {
