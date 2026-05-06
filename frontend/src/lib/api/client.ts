@@ -4,17 +4,21 @@ const API = import.meta.env.VITE_API_BASE_URL || "/api";
 const ENABLE_DEV_AUTH_BYPASS = import.meta.env.VITE_ENABLE_DEV_AUTH_BYPASS === "true";
 
 async function readError(response: Response) {
+  const text = await response.text();
+  if (!text) {
+    return "Request failed";
+  }
+
   try {
-    const data = await response.json();
+    const data = JSON.parse(text);
     if (typeof data?.detail === "string") {
       return data.detail;
     }
   } catch {
-    // Fall back to plain text when the response is not JSON.
+    // Fall back to the raw text when the response is not JSON.
   }
 
-  const text = await response.text();
-  return text || "Request failed";
+  return text;
 }
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -93,6 +97,16 @@ export function createFolder(scope: StorageScope, name: string, parentPath: stri
       name,
       parent_path: parentPath,
     }),
+  });
+}
+
+export async function deleteFolder(scope: StorageScope, path: string) {
+  const params = new URLSearchParams({
+    scope,
+    path,
+  });
+  await fetchJson<{ message: string }>(`/files/folders?${params.toString()}`, {
+    method: "DELETE",
   });
 }
 
