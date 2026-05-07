@@ -27,7 +27,15 @@ restart_backend() {
 }
 
 build_frontend() {
-  "${SCRIPT_DIR}/build-frontend-vm.sh"
+  cd "${REPO_ROOT}/frontend"
+
+  if [ -f "${SCRIPT_DIR}/frontend.env.production" ]; then
+    set -a
+    . "${SCRIPT_DIR}/frontend.env.production"
+    set +a
+  fi
+
+  VITE_API_BASE_URL="${VITE_API_BASE_URL:-/api}" npm run build
 }
 
 if [ "$#" -ne 1 ]; then
