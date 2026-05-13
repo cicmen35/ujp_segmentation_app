@@ -78,6 +78,7 @@ export function Sidebar() {
   const folderTreeVersion = useSessionStore((s) => s.folderTreeVersion)
   const bumpFolderTreeVersion = useSessionStore((s) => s.bumpFolderTreeVersion)
   const isAdmin = role === 'admin'
+  const showSharedActions = isAdmin
   const [width, setWidth] = useState(280)
   const [splitRatio, setSplitRatio] = useState(0.55)
   const [privateFolders, setPrivateFolders] = useState<FolderNode[]>([])
@@ -265,40 +266,36 @@ export function Sidebar() {
             {folderError}
           </div>
         )}
-        {isAdmin && (
-          <>
-            <section
-              className="flex min-h-0 flex-col"
-              style={{ flexBasis: `${splitRatio * 100}%`, flexGrow: 0, flexShrink: 0 }}
-            >
-              {renderSectionHeader('Shared folders')}
-              {renderSelectionActions('shared')}
-              <div className="mt-3 flex-1 overflow-auto rounded-lg border border-dashed border-slate-300 bg-white/70 p-3">
-                <FolderTree
-                  nodes={sharedFolders}
-                  scope="shared"
-                  selectedScope={selectedSaveScope}
-                  selectedPath={selectedSavePath}
-                  onSelect={setSelectedSaveTarget}
-                />
-              </div>
-            </section>
+        <section
+          className="flex min-h-0 flex-col"
+          style={{ flexBasis: `${splitRatio * 100}%`, flexGrow: 0, flexShrink: 0 }}
+        >
+          {renderSectionHeader('Shared folders')}
+          {showSharedActions && renderSelectionActions('shared')}
+          <div className="mt-3 flex-1 overflow-auto rounded-lg border border-dashed border-slate-300 bg-white/70 p-3">
+            <FolderTree
+              nodes={sharedFolders}
+              scope="shared"
+              selectedScope={selectedSaveScope}
+              selectedPath={selectedSavePath}
+              onSelect={setSelectedSaveTarget}
+            />
+          </div>
+        </section>
 
-            <button
-              type="button"
-              aria-label="Resize sections"
-              onMouseDown={startSplitDragging}
-              onClick={(event) => event.stopPropagation()}
-              className="my-2 h-2 w-full cursor-row-resize rounded-full border border-dashed border-slate-300 bg-white"
-            >
-              <span className="sr-only">Drag to resize sections</span>
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          aria-label="Resize sections"
+          onMouseDown={startSplitDragging}
+          onClick={(event) => event.stopPropagation()}
+          className="my-2 h-2 w-full cursor-row-resize rounded-full border border-dashed border-slate-300 bg-white"
+        >
+          <span className="sr-only">Drag to resize sections</span>
+        </button>
 
         <section
           className="flex min-h-0 flex-1 flex-col"
-          style={isAdmin ? { flexBasis: `${(1 - splitRatio) * 100}%` } : undefined}
+          style={{ flexBasis: `${(1 - splitRatio) * 100}%` }}
         >
           {renderSectionHeader('Private folders')}
           {renderSelectionActions('private')}
