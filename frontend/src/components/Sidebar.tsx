@@ -9,6 +9,10 @@ const MAX_WIDTH = 420
 const MIN_SECTION_RATIO = 0.2
 
 type DragMode = 'width' | 'split' | null
+type PendingFolderDraft = {
+  scope: StorageScope
+  parentPath: string | null
+}
 
 type FolderTreeProps = {
   nodes: FolderNode[]
@@ -16,6 +20,11 @@ type FolderTreeProps = {
   selectedScope: StorageScope | null
   selectedPath: string | null
   onSelect: (scope: StorageScope, path: string) => void
+  pendingDraft: PendingFolderDraft | null
+  draftName: string
+  onDraftNameChange: (value: string) => void
+  onDraftSubmit: () => void
+  onDraftCancel: () => void
   depth?: number
 }
 
@@ -32,9 +41,57 @@ function FolderIcon({ selected }: { selected: boolean }) {
   )
 }
 
-function FolderTree({ nodes, scope, selectedScope, selectedPath, onSelect, depth = 0 }: FolderTreeProps) {
+function FolderTree({
+  nodes,
+  scope,
+  selectedScope,
+  selectedPath,
+  onSelect,
+  pendingDraft,
+  draftName,
+  onDraftNameChange,
+  onDraftSubmit,
+  onDraftCancel,
+  depth = 0,
+}: FolderTreeProps) {
+  const renderDraftRow = (parentPath: string | null, rowDepth: number) => {
+    if (!pendingDraft || pendingDraft.scope !== scope || pendingDraft.parentPath !== parentPath) {
+      return null
+    }
+
+    return (
+      <div className="py-1">
+        <div
+          className="flex items-center rounded-lg border border-slate-300 bg-white px-2 py-1.5"
+          style={{ paddingLeft: `${rowDepth * 14 + 8}px` }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <FolderIcon selected={false} />
+          <input
+            autoFocus
+            value={draftName}
+            onChange={(event) => onDraftNameChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                onDraftSubmit()
+              } else if (event.key === 'Escape') {
+                event.preventDefault()
+                onDraftCancel()
+              }
+            }}
+            onBlur={onDraftCancel}
+            placeholder="Folder name"
+            className="ml-2 w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+          />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-1">
+      {renderDraftRow(null, depth)}
       {nodes.map((node) => {
         const isSelected = selectedScope === scope && selectedPath === node.path
         return (
@@ -60,9 +117,15 @@ function FolderTree({ nodes, scope, selectedScope, selectedPath, onSelect, depth
                 selectedScope={selectedScope}
                 selectedPath={selectedPath}
                 onSelect={onSelect}
+                pendingDraft={pendingDraft}
+                draftName={draftName}
+                onDraftNameChange={onDraftNameChange}
+                onDraftSubmit={onDraftSubmit}
+                onDraftCancel={onDraftCancel}
                 depth={depth + 1}
               />
             )}
+            {renderDraftRow(node.path, depth + 1)}
           </div>
         )
       })}
@@ -84,6 +147,8 @@ export function Sidebar() {
   const [privateFolders, setPrivateFolders] = useState<FolderNode[]>([])
   const [sharedFolders, setSharedFolders] = useState<FolderNode[]>([])
   const [folderError, setFolderError] = useState<string | null>(null)
+  const [pendingDraft, setPendingDraft] = useState<PendingFolderDraft | null>(null)
+  const [draftName, setDraftName] = useState('')
   const dragModeRef = useRef<DragMode>(null)
   const startXRef = useRef(0)
   const startWidthRef = useRef(width)
@@ -169,19 +234,36 @@ export function Sidebar() {
     document.body.style.userSelect = 'none'
   }, [])
 
-  const handleCreateFolder = async (scope: StorageScope, parentPath: string | null = null) => {
-    const name = window.prompt('Folder name')
-    if (!name) return
+  const startFolderDraft = (scope: StorageScope, parentPath: string | null = null) => {
+    setPendingDraft({ scope, parentPath })
+    setDraftName('')
+    setFolderError(null)
+  }
+
+  const cancelFolderDraft = useCallback(() => {
+    setPendingDraft(null)
+    setDraftName('')
+  }, [])
+
+  const submitFolderDraft = useCallback(async () => {
+    if (!pendingDraft) return
+
+    const name = draftName.trim()
+    if (!name) {
+      cancelFolderDraft()
+      return
+    }
 
     try {
-      const created = await createFolder(scope, name, parentPath)
-      setSelectedSaveTarget(scope, created.path)
+      const created = await createFolder(pendingDraft.scope, name, pendingDraft.parentPath)
+      setSelectedSaveTarget(pendingDraft.scope, created.path)
       bumpFolderTreeVersion()
       setFolderError(null)
+      cancelFolderDraft()
     } catch (error) {
       setFolderError(error instanceof Error ? error.message : 'Failed to create folder')
     }
-  }
+  }, [bumpFolderTreeVersion, cancelFolderDraft, draftName, pendingDraft, setSelectedSaveTarget])
 
   const handleDeleteSelectedFolder = async (scope: StorageScope) => {
     if (selectedSaveScope !== scope || !selectedSavePath) return
@@ -208,7 +290,7 @@ export function Sidebar() {
             type="button"
             onClick={(event) => {
               event.stopPropagation()
-              void handleCreateFolder(scope, null)
+              startFolderDraft(scope, null)
             }}
             className="rounded-md bg-slate-200 px-2.5 py-1 text-xs text-slate-700 transition hover:bg-slate-300"
           >
@@ -220,7 +302,7 @@ export function Sidebar() {
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation()
-                  void handleCreateFolder(scope, selectedSavePath)
+                  startFolderDraft(scope, selectedSavePath)
                 }}
                 className="rounded-md bg-slate-200 px-2.5 py-1 text-xs text-slate-700 transition hover:bg-slate-300"
               >
@@ -259,7 +341,10 @@ export function Sidebar() {
     >
       <div
         className="flex h-full w-full flex-col px-4 py-4"
-        onClick={() => setSelectedSaveTarget(null, null)}
+        onClick={() => {
+          cancelFolderDraft()
+          setSelectedSaveTarget(null, null)
+        }}
       >
         {folderError && (
           <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
@@ -279,6 +364,11 @@ export function Sidebar() {
               selectedScope={selectedSaveScope}
               selectedPath={selectedSavePath}
               onSelect={setSelectedSaveTarget}
+              pendingDraft={pendingDraft}
+              draftName={draftName}
+              onDraftNameChange={setDraftName}
+              onDraftSubmit={() => void submitFolderDraft()}
+              onDraftCancel={cancelFolderDraft}
             />
           </div>
         </section>
@@ -306,6 +396,11 @@ export function Sidebar() {
               selectedScope={selectedSaveScope}
               selectedPath={selectedSavePath}
               onSelect={setSelectedSaveTarget}
+              pendingDraft={pendingDraft}
+              draftName={draftName}
+              onDraftNameChange={setDraftName}
+              onDraftSubmit={() => void submitFolderDraft()}
+              onDraftCancel={cancelFolderDraft}
             />
           </div>
         </section>
