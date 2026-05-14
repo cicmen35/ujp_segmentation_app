@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import sqlite3
 import datetime
 import uuid
+import json
 
 from backend.config import COOKIE_SAMESITE, COOKIE_SECURE, ENABLE_DEV_AUTH_BYPASS
 from backend.database import get_db
@@ -38,6 +39,20 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     username: str
     password: str
+
+
+class PromptPointPayload(BaseModel):
+    x: float
+    y: float
+    label: int
+
+
+class PromptPresetPayload(BaseModel):
+    model: str
+    prompt_mode: str
+    preprocessing_mode: str
+    bounding_box: list[float] | None = None
+    prompt_points: list[PromptPointPayload]
 
 
 def create_auth_response(response: Response, user_id: str, username: str, role: str, db: sqlite3.Connection):
@@ -198,6 +213,70 @@ def delete_user_by_username(username: str, db: sqlite3.Connection):
 @router.get("/me")
 def get_me(user: dict = Depends(get_current_user)):
     return user
+
+
+@router.get("/prompt-preset")
+def get_prompt_preset(
+    user: dict = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db),
+):
+    cursor = db.cursor()
+    cursor.execute(
+        """
+        SELECT model, prompt_mode, preprocessing_mode, bounding_box, prompt_points
+        FROM prompt_presets
+        WHERE user_id = ?
+        """,
+        (user["id"],),
+    )
+    row = cursor.fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "model": row["model"],
+        "prompt_mode": row["prompt_mode"],
+        "preprocessing_mode": row["preprocessing_mode"],
+        "bounding_box": json.loads(row["bounding_box"]) if row["bounding_box"] else None,
+        "prompt_points": json.loads(row["prompt_points"]),
+    }
+
+
+@router.put("/prompt-preset")
+def save_prompt_preset(
+    preset: PromptPresetPayload,
+    user: dict = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db),
+):
+    bounding_box_json = json.dumps(preset.bounding_box) if preset.bounding_box is not None else None
+    prompt_points_json = json.dumps([point.model_dump() for point in preset.prompt_points])
+
+    db.execute(
+        """
+        INSERT INTO prompt_presets (
+            user_id, model, prompt_mode, preprocessing_mode, bounding_box, prompt_points
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+            model = excluded.model,
+            prompt_mode = excluded.prompt_mode,
+            preprocessing_mode = excluded.preprocessing_mode,
+            bounding_box = excluded.bounding_box,
+            prompt_points = excluded.prompt_points
+        """,
+        (
+            user["id"],
+            preset.model,
+            preset.prompt_mode,
+            preset.preprocessing_mode,
+            bounding_box_json,
+            prompt_points_json,
+        ),
+    )
+    db.commit()
+
+    return {"message": "Prompt preset saved"}
 
 
 @router.get("/users")

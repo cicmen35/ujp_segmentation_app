@@ -37,6 +37,18 @@ def init_db():
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS prompt_presets (
+            user_id TEXT PRIMARY KEY,
+            model TEXT NOT NULL,
+            prompt_mode TEXT NOT NULL,
+            preprocessing_mode TEXT NOT NULL,
+            bounding_box TEXT,
+            prompt_points TEXT NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
     
     conn.commit()
     conn.close()
