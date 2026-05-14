@@ -10,6 +10,11 @@ import type { UserListItem } from '../lib/api/types'
 import { useSessionStore } from '../lib/store/session'
 
 type AuthMode = 'login' | 'register'
+type Toast = {
+  id: number
+  kind: 'success' | 'error'
+  message: string
+}
 
 export function App() {
   const isLoggedIn = useSessionStore((s) => s.isLoggedIn)
@@ -62,12 +67,17 @@ export function App() {
   const [isDeleteUsersOpen, setIsDeleteUsersOpen] = useState(false)
   const [userSuggestions, setUserSuggestions] = useState<UserListItem[]>([])
   const [isSavingSession, setIsSavingSession] = useState(false)
-  const [saveSessionError, setSaveSessionError] = useState<string | null>(null)
-  const [saveSessionSuccess, setSaveSessionSuccess] = useState<string | null>(null)
   const [isApplyingPromptPreset, setIsApplyingPromptPreset] = useState(false)
   const [isSavingPromptPreset, setIsSavingPromptPreset] = useState(false)
-  const [promptPresetError, setPromptPresetError] = useState<string | null>(null)
-  const [promptPresetSuccess, setPromptPresetSuccess] = useState<string | null>(null)
+  const [toasts, setToasts] = useState<Toast[]>([])
+
+  const pushToast = (kind: Toast['kind'], message: string) => {
+    const id = Date.now() + Math.floor(Math.random() * 1000)
+    setToasts((current) => [...current, { id, kind, message }])
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id))
+    }, 5000)
+  }
 
   useEffect(() => {
     let active = true
@@ -153,9 +163,8 @@ export function App() {
       setIsDeleteUsersOpen(false)
       setDeleteUserError(null)
       setDeleteUserSuccess(null)
-      setSaveSessionError(null)
-      setSaveSessionSuccess(null)
       setUserToDelete('')
+      setToasts([])
       setIsLoggingOut(false)
     }
   }
@@ -183,21 +192,19 @@ export function App() {
     const file = useSessionStore.getState().file
     if (!file) return
 
-    setSaveSessionError(null)
-    setSaveSessionSuccess(null)
     setIsSavingSession(true)
 
     try {
       const maskBlob = await fetch(maskUrl).then((response) => response.blob())
       const scope = selectedSaveScope ?? 'private'
       const result = await saveSession(file, maskBlob, scope, selectedSavePath)
-      setSaveSessionSuccess(`Saved to ${scope}/${result.path}`)
+      pushToast('success', `Saved to ${scope}/${result.path}`)
       bumpFolderTreeVersion()
     } catch (error) {
       if (error instanceof Error && error.message === 'Not authenticated') {
-        setSaveSessionError('Session save is unavailable in the current session')
+        pushToast('error', 'Session save is unavailable in the current session')
       } else {
-        setSaveSessionError(error instanceof Error ? error.message : 'Failed to save session')
+        pushToast('error', error instanceof Error ? error.message : 'Failed to save session')
       }
     } finally {
       setIsSavingSession(false)
@@ -205,14 +212,12 @@ export function App() {
   }
 
   const handleApplyPromptPreset = async () => {
-    setPromptPresetError(null)
-    setPromptPresetSuccess(null)
     setIsApplyingPromptPreset(true)
 
     try {
       const preset = await fetchPromptPreset()
       if (!preset) {
-        setPromptPresetError('No preferred prompt saved yet')
+        pushToast('error', 'No preferred prompt saved yet')
         return
       }
 
@@ -221,17 +226,15 @@ export function App() {
       setPreprocessingMode(preset.preprocessing_mode)
       setBoundingBox(preset.bounding_box)
       setPromptPoints(preset.prompt_points)
-      setPromptPresetSuccess('Preferred prompt applied')
+      pushToast('success', 'Preferred prompt applied')
     } catch (error) {
-      setPromptPresetError(error instanceof Error ? error.message : 'Failed to apply preferred prompt')
+      pushToast('error', error instanceof Error ? error.message : 'Failed to apply preferred prompt')
     } finally {
       setIsApplyingPromptPreset(false)
     }
   }
 
   const handleSavePromptPreset = async () => {
-    setPromptPresetError(null)
-    setPromptPresetSuccess(null)
     setIsSavingPromptPreset(true)
 
     try {
@@ -242,9 +245,9 @@ export function App() {
         bounding_box: boundingBox,
         prompt_points: promptPoints,
       })
-      setPromptPresetSuccess('Preferred prompt saved')
+      pushToast('success', 'Preferred prompt saved')
     } catch (error) {
-      setPromptPresetError(error instanceof Error ? error.message : 'Failed to save preferred prompt')
+      pushToast('error', error instanceof Error ? error.message : 'Failed to save preferred prompt')
     } finally {
       setIsSavingPromptPreset(false)
     }
@@ -401,30 +404,6 @@ export function App() {
               )}
             </div>
 
-            {promptPresetError && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {promptPresetError}
-              </div>
-            )}
-
-            {promptPresetSuccess && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                {promptPresetSuccess}
-              </div>
-            )}
-
-            {(saveSessionError || saveSessionSuccess) && (
-              <div
-                className={`rounded-2xl border px-4 py-3 text-sm ${
-                  saveSessionError
-                    ? 'border-red-200 bg-red-50 text-red-700'
-                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                }`}
-              >
-                {saveSessionError ?? saveSessionSuccess}
-              </div>
-            )}
-
             {/* Settings */}
             <div className="mt-4 grid gap-6 md:grid-cols-2">
               {/* Model selection */}
@@ -537,6 +516,24 @@ export function App() {
           </div>
         </main>
       </div>
+
+      {toasts.length > 0 && (
+        <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-sm flex-col gap-3">
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              className={`rounded-2xl border px-4 py-3 text-sm shadow-lg ${
+                toast.kind === 'error'
+                  ? 'border-red-200 bg-red-50 text-red-700'
+                  : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+              }`}
+            >
+              {toast.message}
+            </div>
+          ))}
+        </div>
+      )}
+
       {isLoginOpen && !isLoggedIn && (
         <div className="fixed inset-0 z-20 flex items-start justify-end bg-slate-950/15 px-6 py-20">
           <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
