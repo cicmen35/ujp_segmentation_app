@@ -70,6 +70,14 @@ export function fetchPromptPreset() {
   return fetchJson<PromptPreset | null>("/auth/prompt-preset");
 }
 
+export async function savePromptPreset(preset: PromptPreset) {
+  await fetchJson<{ message: string }>("/auth/prompt-preset", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(preset),
+  });
+}
+
 export async function deleteUser(username: string) {
   const path = `/auth/users/${encodeURIComponent(username)}`;
 

@@ -5,7 +5,7 @@ import { Sidebar } from '../components/Sidebar'
 import { ImageCanvas } from '../components/ImageCanvas/ImageCanvas'
 import { SegmentPanel } from '../features/segment/SegmentPanel'
 import { UploadDropzone } from '../features/upload/UploadDropzone'
-import { deleteUser, fetchCurrentUser, fetchPromptPreset, fetchUsers, login, logout, register, saveSession } from '../lib/api/client'
+import { deleteUser, fetchCurrentUser, fetchPromptPreset, fetchUsers, login, logout, register, savePromptPreset, saveSession } from '../lib/api/client'
 import type { UserListItem } from '../lib/api/types'
 import { useSessionStore } from '../lib/store/session'
 
@@ -65,6 +65,7 @@ export function App() {
   const [saveSessionError, setSaveSessionError] = useState<string | null>(null)
   const [saveSessionSuccess, setSaveSessionSuccess] = useState<string | null>(null)
   const [isApplyingPromptPreset, setIsApplyingPromptPreset] = useState(false)
+  const [isSavingPromptPreset, setIsSavingPromptPreset] = useState(false)
   const [promptPresetError, setPromptPresetError] = useState<string | null>(null)
   const [promptPresetSuccess, setPromptPresetSuccess] = useState<string | null>(null)
 
@@ -228,6 +229,27 @@ export function App() {
     }
   }
 
+  const handleSavePromptPreset = async () => {
+    setPromptPresetError(null)
+    setPromptPresetSuccess(null)
+    setIsSavingPromptPreset(true)
+
+    try {
+      await savePromptPreset({
+        model,
+        prompt_mode: promptMode,
+        preprocessing_mode: preprocessingMode,
+        bounding_box: boundingBox,
+        prompt_points: promptPoints,
+      })
+      setPromptPresetSuccess('Preferred prompt saved')
+    } catch (error) {
+      setPromptPresetError(error instanceof Error ? error.message : 'Failed to save preferred prompt')
+    } finally {
+      setIsSavingPromptPreset(false)
+    }
+  }
+
   return (
     <div className="flex h-screen bg-white">
       {isLoggedIn && <Sidebar />}
@@ -329,14 +351,25 @@ export function App() {
               <SegmentPanel />
 
               {isLoggedIn && (
-                <button
-                  type="button"
-                  onClick={handleApplyPromptPreset}
-                  disabled={isApplyingPromptPreset}
-                  className="rounded-full border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isApplyingPromptPreset ? 'Applying preset...' : 'Apply preferred prompt'}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={handleSavePromptPreset}
+                    disabled={!hasPromptData || isSavingPromptPreset}
+                    className="rounded-full border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isSavingPromptPreset ? 'Saving preset...' : 'Save preferred prompt'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleApplyPromptPreset}
+                    disabled={isApplyingPromptPreset}
+                    className="rounded-full border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isApplyingPromptPreset ? 'Applying preset...' : 'Apply preferred prompt'}
+                  </button>
+                </>
               )}
 
               {maskUrl && (
