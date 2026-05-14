@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import { createFolder, deleteFolder, fetchFolderTree } from '../lib/api/client'
-import type { FolderNode, StorageScope } from '../lib/api/types'
+import type { FolderFile, FolderNode, StorageScope } from '../lib/api/types'
 import { useSessionStore } from '../lib/store/session'
 
 const MIN_WIDTH = 220
@@ -53,6 +53,14 @@ function TrashIcon() {
   )
 }
 
+function FileIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" fill="currentColor">
+      <path d="M6.75 3.75A2.25 2.25 0 0 0 4.5 6v12A2.25 2.25 0 0 0 6.75 20.25h10.5A2.25 2.25 0 0 0 19.5 18V8.56a2.25 2.25 0 0 0-.659-1.591l-2.81-2.81A2.25 2.25 0 0 0 14.44 3.5H6.75Z" />
+    </svg>
+  )
+}
+
 function FolderTree({
   nodes,
   scope,
@@ -66,6 +74,27 @@ function FolderTree({
   onDraftCancel,
   depth = 0,
 }: FolderTreeProps) {
+  const renderFiles = (files: FolderFile[], rowDepth: number) => {
+    if (files.length === 0) {
+      return null
+    }
+
+    return (
+      <div className="space-y-1">
+        {files.map((file) => (
+          <div
+            key={`${scope}:file:${file.path}`}
+            className="flex items-center rounded-lg px-2 py-1.5 text-left text-sm text-slate-500"
+            style={{ paddingLeft: `${rowDepth * 14 + 8}px` }}
+          >
+            <FileIcon />
+            <span className="ml-2 truncate">{file.name}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   const renderDraftRow = (parentPath: string | null, rowDepth: number) => {
     if (!pendingDraft || pendingDraft.scope !== scope || pendingDraft.parentPath !== parentPath) {
       return null
@@ -137,6 +166,7 @@ function FolderTree({
                 depth={depth + 1}
               />
             )}
+            {isSelected && renderFiles(node.files, depth + 1)}
             {renderDraftRow(node.path, depth + 1)}
           </div>
         )

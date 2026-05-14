@@ -23,10 +23,16 @@ export type PromptPoint = {
 };
 export type BoundingBox = [number, number, number, number];
 
+export type FolderFile = {
+  name: string;
+  path: string;
+};
+
 export type FolderNode = {
   name: string;
   path: string;
   children: FolderNode[];
+  files: FolderFile[];
 };
 
 export type FolderTreeResponse = {

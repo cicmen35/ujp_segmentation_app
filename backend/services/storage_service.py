@@ -65,14 +65,25 @@ def resolve_relative_directory(root: Path, relative_path: str | None) -> Path:
 
 def build_folder_tree(root: Path) -> list[dict]:
     def build_node(directory: Path) -> dict:
-        children = sorted(
+        child_directories = sorted(
             [child for child in directory.iterdir() if child.is_dir()],
+            key=lambda child: child.name.lower(),
+        )
+        files = sorted(
+            [child for child in directory.iterdir() if child.is_file()],
             key=lambda child: child.name.lower(),
         )
         return {
             "name": directory.name,
             "path": str(directory.relative_to(root)),
-            "children": [build_node(child) for child in children],
+            "children": [build_node(child) for child in child_directories],
+            "files": [
+                {
+                    "name": child.name,
+                    "path": str(child.relative_to(root)),
+                }
+                for child in files
+            ],
         }
 
     return [build_node(child) for child in sorted(root.iterdir(), key=lambda item: item.name.lower()) if child.is_dir()]
