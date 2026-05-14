@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
-import { createFolder, deleteFolder, fetchFolderTree } from '../lib/api/client'
+import { createFolder, deleteFolder, fetchFolderTree, buildFileContentUrl } from '../lib/api/client'
+import { ImageModal } from './ImageModal'
 import type { FolderFile, FolderNode, StorageScope } from '../lib/api/types'
 import { useSessionStore } from '../lib/store/session'
 
@@ -29,6 +30,7 @@ type FolderTreeProps = {
   onDraftNameChange: (value: string) => void
   onDraftSubmit: () => void
   onDraftCancel: () => void
+  onFileOpen: (scope: StorageScope, file: FolderFile) => void
   depth?: number
 }
 
@@ -72,6 +74,7 @@ function FolderTree({
   onDraftNameChange,
   onDraftSubmit,
   onDraftCancel,
+  onFileOpen,
   depth = 0,
 }: FolderTreeProps) {
   const renderFiles = (files: FolderFile[], rowDepth: number) => {
@@ -82,14 +85,19 @@ function FolderTree({
     return (
       <div className="space-y-1">
         {files.map((file) => (
-          <div
+          <button
+            type="button"
             key={`${scope}:file:${file.path}`}
-            className="flex items-center rounded-lg px-2 py-1.5 text-left text-sm text-slate-500"
+            onClick={(event) => {
+              event.stopPropagation()
+              onFileOpen(scope, file)
+            }}
+            className="flex w-full items-center rounded-lg px-2 py-1.5 text-left text-sm text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
             style={{ paddingLeft: `${rowDepth * 14 + 8}px` }}
           >
             <FileIcon />
             <span className="ml-2 truncate">{file.name}</span>
-          </div>
+          </button>
         ))}
       </div>
     )
@@ -163,6 +171,7 @@ function FolderTree({
                 onDraftNameChange={onDraftNameChange}
                 onDraftSubmit={onDraftSubmit}
                 onDraftCancel={onDraftCancel}
+                onFileOpen={onFileOpen}
                 depth={depth + 1}
               />
             )}
@@ -192,6 +201,7 @@ export function Sidebar() {
   const [pendingDraft, setPendingDraft] = useState<PendingFolderDraft | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDeleteConfirm | null>(null)
   const [draftName, setDraftName] = useState('')
+  const [previewFile, setPreviewFile] = useState<{ src: string; name: string } | null>(null)
   const dragModeRef = useRef<DragMode>(null)
   const startXRef = useRef(0)
   const startWidthRef = useRef(width)
@@ -395,6 +405,13 @@ export function Sidebar() {
     )
   }
 
+  const handleFileOpen = (scope: StorageScope, file: FolderFile) => {
+    setPreviewFile({
+      src: buildFileContentUrl(scope, file.path),
+      name: file.name,
+    })
+  }
+
   return (
     <aside
       ref={sidebarRef}
@@ -431,6 +448,7 @@ export function Sidebar() {
               onDraftNameChange={setDraftName}
               onDraftSubmit={() => void submitFolderDraft()}
               onDraftCancel={cancelFolderDraft}
+              onFileOpen={handleFileOpen}
             />
           </div>
         </section>
@@ -463,6 +481,7 @@ export function Sidebar() {
               onDraftNameChange={setDraftName}
               onDraftSubmit={() => void submitFolderDraft()}
               onDraftCancel={cancelFolderDraft}
+              onFileOpen={handleFileOpen}
             />
           </div>
         </section>
@@ -509,6 +528,14 @@ export function Sidebar() {
             </div>
           </div>
         </div>
+      )}
+
+      {previewFile && (
+        <ImageModal
+          src={previewFile.src}
+          alt={previewFile.name}
+          onClose={() => setPreviewFile(null)}
+        />
       )}
     </aside>
   )

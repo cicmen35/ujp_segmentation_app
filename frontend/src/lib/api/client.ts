@@ -108,6 +108,11 @@ export function fetchFolderTree() {
   return fetchJson<FolderTreeResponse>("/files/tree");
 }
 
+export function buildFileContentUrl(scope: StorageScope, path: string) {
+  const params = new URLSearchParams({ scope, path });
+  return `${API}/files/content?${params.toString()}`;
+}
+
 export function createFolder(scope: StorageScope, name: string, parentPath: string | null) {
   return fetchJson<{ name: string; path: string; scope: StorageScope }>("/files/folders", {
     method: "POST",
