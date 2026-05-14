@@ -41,6 +41,14 @@ function FolderIcon({ selected }: { selected: boolean }) {
   )
 }
 
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="currentColor">
+      <path d="M9 3.75A2.25 2.25 0 0 0 6.75 6v.75H4.5a.75.75 0 0 0 0 1.5h.529l.813 9.753A2.25 2.25 0 0 0 8.084 20.25h7.832a2.25 2.25 0 0 0 2.242-2.247l.813-9.753H19.5a.75.75 0 0 0 0-1.5h-2.25V6A2.25 2.25 0 0 0 15 3.75H9ZM15.75 6.75h-7.5V6A.75.75 0 0 1 9 5.25h6a.75.75 0 0 1 .75.75v.75Z" />
+    </svg>
+  )
+}
+
 function FolderTree({
   nodes,
   scope,
@@ -314,9 +322,11 @@ export function Sidebar() {
                   event.stopPropagation()
                   void handleDeleteSelectedFolder(scope)
                 }}
-                className="rounded-md bg-red-100 px-2.5 py-1 text-xs text-red-700 transition hover:bg-red-200"
+                aria-label="Delete folder"
+                title="Delete folder"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-red-100 text-red-700 transition hover:bg-red-200"
               >
-                Delete folder
+                <TrashIcon />
               </button>
             </>
           )}
