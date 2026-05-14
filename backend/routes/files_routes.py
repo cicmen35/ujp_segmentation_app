@@ -25,7 +25,7 @@ class CreateFolderRequest(BaseModel):
 
 def get_scope_root(user: dict, scope: str):
     if scope == "private":
-        return get_private_root(user["username"])
+        return get_private_root(user["id"])
 
     if scope == "shared":
         return get_shared_root()
@@ -40,7 +40,7 @@ def require_shared_folder_admin(user: dict, scope: str):
 
 @router.get("/tree")
 def get_folder_tree(user: dict = Depends(get_current_user)):
-    private_root = get_private_root(user["username"])
+    private_root = get_private_root(user["id"])
     payload = {
         "private": build_folder_tree(private_root),
         "shared": build_folder_tree(get_shared_root()),

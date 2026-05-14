@@ -19,8 +19,8 @@ def get_shared_root() -> Path:
     return root
 
 
-def get_private_root(username: str) -> Path:
-    root = ensure_storage_root() / "private" / username
+def get_private_root(user_id: str) -> Path:
+    root = ensure_storage_root() / "private" / user_id
     root.mkdir(parents=True, exist_ok=True)
     return root
 
