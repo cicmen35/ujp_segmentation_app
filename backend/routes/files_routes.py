@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from shutil import rmtree
 import sqlite3
@@ -11,6 +12,7 @@ from backend.services.storage_service import (
     get_private_root,
     get_shared_root,
     resolve_relative_directory,
+    resolve_relative_file,
     sanitize_folder_name,
 )
 
@@ -110,3 +112,14 @@ async def save_session(
         "original_image": original_filename,
         "mask_image": mask_filename,
     }
+
+
+@router.get("/content")
+def get_file_content(
+    scope: str,
+    path: str,
+    user: dict = Depends(get_current_user),
+):
+    root = get_scope_root(user, scope)
+    target = resolve_relative_file(root, path)
+    return FileResponse(target)

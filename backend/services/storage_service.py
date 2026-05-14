@@ -63,6 +63,19 @@ def resolve_relative_directory(root: Path, relative_path: str | None) -> Path:
     return candidate
 
 
+def resolve_relative_file(root: Path, relative_path: str) -> Path:
+    root_resolved = root.resolve()
+    candidate = (root_resolved / relative_path).resolve()
+
+    if os.path.commonpath([str(root_resolved), str(candidate)]) != str(root_resolved):
+        raise HTTPException(status_code=400, detail="Invalid file path")
+
+    if not candidate.exists() or not candidate.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return candidate
+
+
 def build_folder_tree(root: Path) -> list[dict]:
     def build_node(directory: Path) -> dict:
         child_directories = sorted(
