@@ -13,6 +13,10 @@ type PendingFolderDraft = {
   scope: StorageScope
   parentPath: string | null
 }
+type PendingDeleteConfirm = {
+  scope: StorageScope
+  path: string
+}
 
 type FolderTreeProps = {
   nodes: FolderNode[]
@@ -156,6 +160,7 @@ export function Sidebar() {
   const [sharedFolders, setSharedFolders] = useState<FolderNode[]>([])
   const [folderError, setFolderError] = useState<string | null>(null)
   const [pendingDraft, setPendingDraft] = useState<PendingFolderDraft | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<PendingDeleteConfirm | null>(null)
   const [draftName, setDraftName] = useState('')
   const dragModeRef = useRef<DragMode>(null)
   const startXRef = useRef(0)
@@ -198,6 +203,19 @@ export function Sidebar() {
       window.removeEventListener('mouseup', stopDragging)
     }
   }, [onMouseMove, stopDragging])
+
+  useEffect(() => {
+    if (!pendingDelete) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setPendingDelete(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [pendingDelete])
 
   useEffect(() => {
     let active = true
@@ -273,16 +291,20 @@ export function Sidebar() {
     }
   }, [bumpFolderTreeVersion, cancelFolderDraft, draftName, pendingDraft, setSelectedSaveTarget])
 
-  const handleDeleteSelectedFolder = async (scope: StorageScope) => {
+  const requestDeleteSelectedFolder = (scope: StorageScope) => {
     if (selectedSaveScope !== scope || !selectedSavePath) return
-    const confirmed = window.confirm(`Delete folder "${selectedSavePath}" and all of its contents?`)
-    if (!confirmed) return
+    setPendingDelete({ scope, path: selectedSavePath })
+  }
+
+  const confirmDeleteSelectedFolder = async () => {
+    if (!pendingDelete) return
 
     try {
-      await deleteFolder(scope, selectedSavePath)
+      await deleteFolder(pendingDelete.scope, pendingDelete.path)
       setSelectedSaveTarget(null, null)
       bumpFolderTreeVersion()
       setFolderError(null)
+      setPendingDelete(null)
     } catch (error) {
       setFolderError(error instanceof Error ? error.message : 'Failed to delete folder')
     }
@@ -320,7 +342,7 @@ export function Sidebar() {
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation()
-                  void handleDeleteSelectedFolder(scope)
+                  requestDeleteSelectedFolder(scope)
                 }}
                 aria-label="Delete folder"
                 title="Delete folder"
@@ -425,6 +447,39 @@ export function Sidebar() {
       >
         <span className="sr-only">Drag to resize sidebar width</span>
       </button>
+
+      {pendingDelete && (
+        <div
+          className="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/20 px-4"
+          onClick={() => setPendingDelete(null)}
+        >
+          <div
+            className="w-full max-w-xs rounded-xl border border-slate-200 bg-white p-4 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="text-sm font-semibold text-slate-900">Delete folder?</p>
+            <p className="mt-2 text-sm text-slate-600">
+              Delete <span className="font-medium text-slate-800">{pendingDelete.path}</span> and all of its contents?
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingDelete(null)}
+                className="rounded-md bg-slate-100 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDeleteSelectedFolder()}
+                className="rounded-md bg-red-600 px-3 py-1.5 text-sm text-white transition hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   )
 }
