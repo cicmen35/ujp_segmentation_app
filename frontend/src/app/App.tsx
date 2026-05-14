@@ -5,7 +5,7 @@ import { Sidebar } from '../components/Sidebar'
 import { ImageCanvas } from '../components/ImageCanvas/ImageCanvas'
 import { SegmentPanel } from '../features/segment/SegmentPanel'
 import { UploadDropzone } from '../features/upload/UploadDropzone'
-import { deleteUser, fetchCurrentUser, fetchUsers, login, logout, register, saveSession } from '../lib/api/client'
+import { deleteUser, fetchCurrentUser, fetchPromptPreset, fetchUsers, login, logout, register, saveSession } from '../lib/api/client'
 import type { UserListItem } from '../lib/api/types'
 import { useSessionStore } from '../lib/store/session'
 
@@ -27,6 +27,7 @@ export function App() {
   const boundingBox = useSessionStore((s) => s.boundingBox)
   const setBoundingBox = useSessionStore((s) => s.setBoundingBox)
   const promptPoints = useSessionStore((s) => s.promptPoints)
+  const setPromptPoints = useSessionStore((s) => s.setPromptPoints)
   const removeLastPoint = useSessionStore((s) => s.removeLastPoint)
 
   const hasPromptData = !!boundingBox || promptPoints.length > 0
@@ -63,6 +64,9 @@ export function App() {
   const [isSavingSession, setIsSavingSession] = useState(false)
   const [saveSessionError, setSaveSessionError] = useState<string | null>(null)
   const [saveSessionSuccess, setSaveSessionSuccess] = useState<string | null>(null)
+  const [isApplyingPromptPreset, setIsApplyingPromptPreset] = useState(false)
+  const [promptPresetError, setPromptPresetError] = useState<string | null>(null)
+  const [promptPresetSuccess, setPromptPresetSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -199,6 +203,31 @@ export function App() {
     }
   }
 
+  const handleApplyPromptPreset = async () => {
+    setPromptPresetError(null)
+    setPromptPresetSuccess(null)
+    setIsApplyingPromptPreset(true)
+
+    try {
+      const preset = await fetchPromptPreset()
+      if (!preset) {
+        setPromptPresetError('No preferred prompt saved yet')
+        return
+      }
+
+      setModel(preset.model)
+      setPromptMode(preset.prompt_mode)
+      setPreprocessingMode(preset.preprocessing_mode)
+      setBoundingBox(preset.bounding_box)
+      setPromptPoints(preset.prompt_points)
+      setPromptPresetSuccess('Preferred prompt applied')
+    } catch (error) {
+      setPromptPresetError(error instanceof Error ? error.message : 'Failed to apply preferred prompt')
+    } finally {
+      setIsApplyingPromptPreset(false)
+    }
+  }
+
   return (
     <div className="flex h-screen bg-white">
       {isLoggedIn && <Sidebar />}
@@ -299,6 +328,17 @@ export function App() {
 
               <SegmentPanel />
 
+              {isLoggedIn && (
+                <button
+                  type="button"
+                  onClick={handleApplyPromptPreset}
+                  disabled={isApplyingPromptPreset}
+                  className="rounded-full border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isApplyingPromptPreset ? 'Applying preset...' : 'Apply preferred prompt'}
+                </button>
+              )}
+
               {maskUrl && (
                 <>
                   <button
@@ -325,6 +365,18 @@ export function App() {
                 </>
               )}
             </div>
+
+            {promptPresetError && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {promptPresetError}
+              </div>
+            )}
+
+            {promptPresetSuccess && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                {promptPresetSuccess}
+              </div>
+            )}
 
             {(saveSessionError || saveSessionSuccess) && (
               <div

@@ -1,4 +1,12 @@
-import type { AuthUser, FolderTreeResponse, SamPreprocessingMode, SaveSessionResponse, StorageScope, UserListItem } from "./types";
+import type {
+  AuthUser,
+  FolderTreeResponse,
+  PromptPreset,
+  SamPreprocessingMode,
+  SaveSessionResponse,
+  StorageScope,
+  UserListItem,
+} from "./types";
 
 const API = import.meta.env.VITE_API_BASE_URL || "/api";
 const ENABLE_DEV_AUTH_BYPASS = import.meta.env.VITE_ENABLE_DEV_AUTH_BYPASS === "true";
@@ -56,6 +64,10 @@ export function fetchCurrentUser() {
 
 export async function logout() {
   await fetchJson<{ message: string }>("/auth/logout", { method: "POST" });
+}
+
+export function fetchPromptPreset() {
+  return fetchJson<PromptPreset | null>("/auth/prompt-preset");
 }
 
 export async function deleteUser(username: string) {

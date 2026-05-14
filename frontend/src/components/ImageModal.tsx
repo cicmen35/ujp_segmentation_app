@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef, useState } from 'react'
-import type { BoundingBox, PromptPoint } from '../lib/store/session'
+import type { BoundingBox, PromptPoint } from '../lib/api/types'
 
 type Props = {
     src: string

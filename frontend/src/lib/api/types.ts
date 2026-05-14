@@ -14,6 +14,14 @@ export type UserListItem = {
 export type StorageScope = "shared" | "private";
 
 export type SamPreprocessingMode = "none" | "contrast_change";
+export type PromptMode = "box" | "points" | "box + points";
+export type SegmentationModel = "sam" | "in-house";
+export type PromptPoint = {
+  x: number;
+  y: number;
+  label: 0 | 1;
+};
+export type BoundingBox = [number, number, number, number];
 
 export type FolderNode = {
   name: string;
@@ -32,4 +40,12 @@ export type SaveSessionResponse = {
   path: string;
   original_image: string;
   mask_image: string;
+};
+
+export type PromptPreset = {
+  model: SegmentationModel;
+  prompt_mode: PromptMode;
+  preprocessing_mode: SamPreprocessingMode;
+  bounding_box: BoundingBox | null;
+  prompt_points: PromptPoint[];
 };

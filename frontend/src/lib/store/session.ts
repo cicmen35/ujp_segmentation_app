@@ -1,11 +1,13 @@
 import { create } from "zustand";
-import type { SamPreprocessingMode, StorageScope, UserRole } from "../api/types";
-
-export type SegmentationModel = 'sam' | 'in-house';
-export type PromptMode = "box" | "points" | "box + points";
-
-export type BoundingBox = [number, number, number, number]; // [x1, y1, x2, y2] in image pixels
-export type PromptPoint = { x: number; y: number; label: 0 | 1 }; // 0 = negative, 1 = positive
+import type {
+  BoundingBox,
+  PromptMode,
+  PromptPoint,
+  SamPreprocessingMode,
+  SegmentationModel,
+  StorageScope,
+  UserRole,
+} from "../api/types";
 
 type SessionState = {
   // data
@@ -33,6 +35,7 @@ type SessionState = {
   setMaskUrl: (url: string | null) => void;
   setBoundingBox: (box: BoundingBox | null) => void;
   addPromptPoint: (point: PromptPoint) => void;
+  setPromptPoints: (points: PromptPoint[]) => void;
   removeLastPoint: () => void;
   clearPromptPoints: () => void;
   setModel: (model: SegmentationModel) => void;
@@ -82,6 +85,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
   setBoundingBox: (box) => set({ boundingBox: box }),
   addPromptPoint: (point) => set((s) => ({ promptPoints: [...s.promptPoints, point] })),
+  setPromptPoints: (points) => set({ promptPoints: points }),
   removeLastPoint: () => set((s) => ({ promptPoints: s.promptPoints.slice(0, -1) })),
   clearPromptPoints: () => set({ promptPoints: [] }),
   setModel: (model) => set({ model }),
