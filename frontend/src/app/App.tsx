@@ -352,14 +352,16 @@ export function App() {
 
               {isLoggedIn && (
                 <>
-                  <button
-                    type="button"
-                    onClick={handleSavePromptPreset}
-                    disabled={!hasPromptData || isSavingPromptPreset}
-                    className="rounded-full border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isSavingPromptPreset ? 'Saving preset...' : 'Save preferred prompt'}
-                  </button>
+                  {hasPromptData && (
+                    <button
+                      type="button"
+                      onClick={handleSavePromptPreset}
+                      disabled={isSavingPromptPreset}
+                      className="rounded-full border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isSavingPromptPreset ? 'Saving preset...' : 'Save preferred prompt'}
+                    </button>
+                  )}
 
                   <button
                     type="button"
