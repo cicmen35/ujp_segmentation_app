@@ -24,8 +24,6 @@ sam = sam_model_registry[MODEL_TYPE](checkpoint=str(CHECKPOINT))
 sam.to("cpu")
 predictor = SamPredictor(sam)
 
-SUPPORTED_PREPROCESSING = {"none", "contrast_change"}
-
 
 def _apply_histogram_normalization(img: np.ndarray) -> np.ndarray:
 	lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
@@ -47,9 +45,6 @@ def _apply_contrast_adjustment(img: np.ndarray) -> np.ndarray:
 def _apply_preprocessing(img: np.ndarray, preprocessing: str) -> np.ndarray:
 	if preprocessing == "none":
 		return img
-
-	if preprocessing not in SUPPORTED_PREPROCESSING:
-		raise HTTPException(status_code=400, detail=f"Unsupported preprocessing mode: {preprocessing}")
 
 	img = _apply_histogram_normalization(img)
 	return _apply_contrast_adjustment(img)
