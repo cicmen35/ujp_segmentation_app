@@ -35,11 +35,6 @@ def get_scope_root(user: dict, scope: str):
     raise HTTPException(status_code=400, detail="Invalid folder scope")
 
 
-def require_shared_folder_admin(user: dict, scope: str):
-    if scope == "shared" and user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Shared folder management requires admin access")
-
-
 @router.get("/tree")
 def get_folder_tree(user: dict = Depends(get_current_user)):
     private_root = get_private_root(user["id"])
@@ -56,7 +51,6 @@ def create_folder(
     request: CreateFolderRequest,
     user: dict = Depends(get_current_user),
 ):
-    require_shared_folder_admin(user, request.scope)
     root = get_scope_root(user, request.scope)
     parent = resolve_relative_directory(root, request.parent_path)
     folder_name = sanitize_folder_name(request.name)
@@ -76,7 +70,6 @@ def delete_folder(
     path: str,
     user: dict = Depends(get_current_user),
 ):
-    require_shared_folder_admin(user, scope)
     root = get_scope_root(user, scope)
     target = resolve_relative_directory(root, path)
 

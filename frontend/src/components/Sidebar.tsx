@@ -185,14 +185,11 @@ function FolderTree({
 }
 
 export function Sidebar() {
-  const role = useSessionStore((s) => s.role)
   const selectedSaveScope = useSessionStore((s) => s.selectedSaveScope)
   const selectedSavePath = useSessionStore((s) => s.selectedSavePath)
   const setSelectedSaveTarget = useSessionStore((s) => s.setSelectedSaveTarget)
   const folderTreeVersion = useSessionStore((s) => s.folderTreeVersion)
   const bumpFolderTreeVersion = useSessionStore((s) => s.bumpFolderTreeVersion)
-  const isAdmin = role === 'admin'
-  const showSharedActions = isAdmin
   const [width, setWidth] = useState(280)
   const [splitRatio, setSplitRatio] = useState(0.55)
   const [privateFolders, setPrivateFolders] = useState<FolderNode[]>([])
@@ -435,7 +432,7 @@ export function Sidebar() {
           style={{ flexBasis: `${splitRatio * 100}%`, flexGrow: 0, flexShrink: 0 }}
         >
           {renderSectionHeader('Shared folders')}
-          {showSharedActions && renderSelectionActions('shared')}
+          {renderSelectionActions('shared')}
           <div className="mt-3 flex-1 overflow-auto rounded-lg border border-dashed border-slate-300 bg-white/70 p-3">
             <FolderTree
               nodes={sharedFolders}
