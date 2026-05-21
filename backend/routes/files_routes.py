@@ -10,6 +10,7 @@ from backend.routes.auth_routes import get_current_user
 from backend.services.storage_service import (
     build_folder_tree,
     build_session_folder,
+    copy_relative_item,
     get_private_root,
     get_shared_root,
     rename_relative_item,
@@ -33,6 +34,15 @@ class RenameItemRequest(BaseModel):
     path: str
     new_name: str
     kind: str
+
+
+class CopyItemRequest(BaseModel):
+    source_scope: str
+    source_path: str
+    destination_scope: str
+    destination_parent_path: str | None = None
+    kind: str
+    replace: bool = False
 
 
 def get_scope_root(user: dict, scope: str):
@@ -98,6 +108,24 @@ def rename_item(
     root = get_scope_root(user, request.scope)
     renamed = rename_relative_item(root, request.path, request.new_name, request.kind)
     return {"scope": request.scope, **renamed}
+
+
+@router.post("/items/copy")
+def copy_item(
+    request: CopyItemRequest,
+    user: dict = Depends(get_current_user),
+):
+    source_root = get_scope_root(user, request.source_scope)
+    destination_root = get_scope_root(user, request.destination_scope)
+    copied = copy_relative_item(
+        source_root,
+        request.source_path,
+        request.kind,
+        destination_root,
+        request.destination_parent_path,
+        replace=request.replace,
+    )
+    return {"scope": request.destination_scope, **copied}
 
 
 @router.post("/save-session")

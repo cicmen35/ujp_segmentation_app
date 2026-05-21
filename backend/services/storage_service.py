@@ -3,6 +3,7 @@ import re
 import json
 from datetime import datetime
 from pathlib import Path
+from shutil import copy2, copytree, rmtree
 
 from fastapi import HTTPException
 
@@ -136,6 +137,55 @@ def rename_relative_item(root: Path, relative_path: str, new_name: str, kind: st
         "kind": kind,
     }
 
+def copy_relative_item(
+    source_root: Path,
+    source_path: str,
+    kind: str,
+    destination_root: Path,
+    destination_parent_path: str | None = None,
+    *,
+    replace: bool = False,
+) -> dict[str, str]:
+    source_root_resolved = source_root.resolve()
+    destination_root_resolved = destination_root.resolve()
+
+    if kind == "folder":
+        source = resolve_relative_directory(source_root_resolved, source_path)
+    elif kind == "file":
+        source = resolve_relative_file(source_root_resolved, source_path)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid item type")
+
+    if kind == "folder" and source.resolve() == source_root_resolved:
+        raise HTTPException(status_code=400, detail="Root folder cannot be copied")
+
+    destination_parent = resolve_relative_directory(destination_root_resolved, destination_parent_path)
+    target = destination_parent / source.name
+
+    if target.exists():
+        if not replace:
+            raise HTTPException(status_code=409, detail=f"{kind.capitalize()} already exists")
+
+        if kind == "folder":
+            if not target.is_dir():
+                raise HTTPException(status_code=409, detail="A file with the same name already exists")
+            rmtree(target)
+        else:
+            if not target.is_file():
+                raise HTTPException(status_code=409, detail="A folder with the same name already exists")
+            target.unlink()
+
+    if kind == "folder":
+        copytree(source, target)
+    else:
+        copy2(source, target)
+
+    return {
+        "name": target.name,
+        "path": str(target.relative_to(destination_root_resolved)),
+        "kind": kind,
+    }
+    
 
 def build_folder_tree(root: Path) -> list[dict]:
     def build_node(directory: Path) -> dict:
