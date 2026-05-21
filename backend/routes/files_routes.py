@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from shutil import rmtree
+import json
 import sqlite3
 
 from backend.database import get_db
@@ -14,6 +15,7 @@ from backend.services.storage_service import (
     resolve_relative_directory,
     resolve_relative_file,
     sanitize_folder_name,
+    write_prompt_metadata,
 )
 
 router = APIRouter()
@@ -86,6 +88,7 @@ async def save_session(
     mask_image: UploadFile = File(...),
     scope: str = Form("private"),
     parent_path: str = Form(""),
+    prompt_metadata: str | None = Form(default=None),
     user: dict = Depends(get_current_user),
 ):
     root = get_scope_root(user, scope)
@@ -97,6 +100,17 @@ async def save_session(
 
     (session_dir / original_filename).write_bytes(original_bytes)
     (session_dir / mask_filename).write_bytes(mask_bytes)
+
+    if prompt_metadata:
+        try:
+            prompt_payload = json.loads(prompt_metadata)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail="Invalid prompt metadata") from exc
+
+        if not isinstance(prompt_payload, dict):
+            raise HTTPException(status_code=400, detail="Prompt metadata must be a JSON object")
+
+        write_prompt_metadata(session_dir, prompt_payload)
 
     return {
         "scope": scope,

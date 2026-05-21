@@ -1,5 +1,6 @@
 import os
 import re
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -119,3 +120,8 @@ def build_session_folder(parent: Path, image_filename: str) -> tuple[Path, str, 
     session_dir.mkdir(parents=True, exist_ok=False)
     mask_filename = f"{stem}_mask.png"
     return session_dir, original_filename, mask_filename
+
+
+def write_prompt_metadata(session_dir: Path, payload: dict) -> None:
+    prompt_file = session_dir / "prompt.json"
+    prompt_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
