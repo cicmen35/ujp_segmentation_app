@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
-import { createFolder, deleteFolder, fetchFolderTree, buildFileContentUrl, renameItem } from '../lib/api/client'
+import { copyItem, createFolder, deleteFolder, fetchFolderTree, buildFileContentUrl, renameItem } from '../lib/api/client'
 import { ImageModal } from './ImageModal'
-import type { FolderFile, FolderNode, StorageItemKind, StorageScope } from '../lib/api/types'
+import type { CopiedStorageItem, FolderFile, FolderNode, StorageItemKind, StorageScope } from '../lib/api/types'
 import { useSessionStore } from '../lib/store/session'
 
 const MIN_WIDTH = 220
@@ -27,6 +27,11 @@ type PendingRename = {
   scope: StorageScope
   path: string
   kind: StorageItemKind
+}
+type PendingPasteConflict = {
+  item: CopiedStorageItem
+  destinationScope: StorageScope
+  destinationParentPath: string | null
 }
 
 type FolderTreeProps = {
@@ -53,6 +58,23 @@ function PencilIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="currentColor">
       <path d="m16.862 3.487 1.65-1.65a2.25 2.25 0 1 1 3.182 3.182l-1.65 1.65-3.182-3.182ZM14.74 5.61 3.75 16.6V20.25h3.65L18.39 9.26 14.74 5.61Z" />
+    </svg>
+  )
+}
+
+function CopyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="currentColor">
+      <path d="M7.5 6A2.25 2.25 0 0 1 9.75 3.75h8.25A2.25 2.25 0 0 1 20.25 6v8.25A2.25 2.25 0 0 1 18 16.5H9.75A2.25 2.25 0 0 1 7.5 14.25V6Z" />
+      <path d="M3.75 9.75A2.25 2.25 0 0 1 6 7.5h.75v6.75A3.75 3.75 0 0 0 10.5 18h6.75V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18V9.75Z" />
+    </svg>
+  )
+}
+
+function PasteIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="currentColor">
+      <path d="M9 3.75A2.25 2.25 0 0 0 6.75 6v1.5H6A2.25 2.25 0 0 0 3.75 9.75V18A2.25 2.25 0 0 0 6 20.25h12A2.25 2.25 0 0 0 20.25 18V9.75A2.25 2.25 0 0 0 18 7.5h-.75V6A2.25 2.25 0 0 0 15 3.75H9Zm0 1.5h6A.75.75 0 0 1 15.75 6v1.5h-7.5V6A.75.75 0 0 1 9 5.25Z" />
     </svg>
   )
 }
@@ -316,6 +338,8 @@ export function Sidebar() {
   const [pendingDelete, setPendingDelete] = useState<PendingDeleteConfirm | null>(null)
   const [selectedEntry, setSelectedEntry] = useState<SelectedEntry | null>(null)
   const [pendingRename, setPendingRename] = useState<PendingRename | null>(null)
+  const [copiedItem, setCopiedItem] = useState<CopiedStorageItem | null>(null)
+  const [pendingPasteConflict, setPendingPasteConflict] = useState<PendingPasteConflict | null>(null)
   const [draftName, setDraftName] = useState('')
   const [renameName, setRenameName] = useState('')
   const [previewFile, setPreviewFile] = useState<{ src: string; name: string } | null>(null)
@@ -497,6 +521,39 @@ export function Sidebar() {
     }
   }, [bumpFolderTreeVersion, cancelRename, pendingRename, renameName, setSelectedSaveTarget])
 
+  const performPaste = useCallback(async (
+    item: CopiedStorageItem,
+    destinationScope: StorageScope,
+    destinationParentPath: string | null,
+    replace = false,
+  ) => {
+    try {
+      const copied = await copyItem(item, destinationScope, destinationParentPath, replace)
+      setSelectedEntry({
+        scope: copied.scope,
+        path: copied.path,
+        kind: copied.kind,
+      })
+      if (copied.kind === 'folder') {
+        setSelectedSaveTarget(copied.scope, copied.path)
+      }
+      setFolderError(null)
+      setPendingPasteConflict(null)
+      bumpFolderTreeVersion()
+    } catch (error) {
+      if (error instanceof Error && error.message.toLowerCase().includes('already exists')) {
+        setPendingPasteConflict({
+          item,
+          destinationScope,
+          destinationParentPath,
+        })
+        return
+      }
+
+      setFolderError(error instanceof Error ? error.message : 'Failed to paste item')
+    }
+  }, [bumpFolderTreeVersion, setSelectedSaveTarget])
+
   const confirmDeleteSelectedFolder = async () => {
     if (!pendingDelete) return
 
@@ -514,6 +571,9 @@ export function Sidebar() {
   const renderSelectionActions = (scope: StorageScope) => {
     const hasSelectedFolder = selectedEntry?.scope === scope && selectedEntry.kind === 'folder'
     const hasSelectedItem = selectedEntry?.scope === scope
+    const pasteSourceMatchesScope = copiedItem?.sourceScope === scope
+    const showPaste = !!copiedItem && !pasteSourceMatchesScope
+    const destinationParentPath = hasSelectedFolder && selectedEntry ? selectedEntry.path : null
 
     return (
       <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
@@ -548,6 +608,25 @@ export function Sidebar() {
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation()
+                  if (!selectedEntry) return
+                  setCopiedItem({
+                    sourceScope: selectedEntry.scope,
+                    path: selectedEntry.path,
+                    kind: selectedEntry.kind,
+                    name: selectedEntry.path.split('/').pop() ?? selectedEntry.path,
+                  })
+                  setFolderError(null)
+                }}
+                aria-label="Copy item"
+                title="Copy item"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-slate-200 text-slate-700 transition hover:bg-slate-300"
+              >
+                <CopyIcon />
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
                   startRenameSelectedItem(scope)
                 }}
                 aria-label="Rename item"
@@ -557,6 +636,20 @@ export function Sidebar() {
                 <PencilIcon />
               </button>
             </>
+          )}
+          {showPaste && copiedItem && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                void performPaste(copiedItem, scope, destinationParentPath)
+              }}
+              aria-label="Paste item"
+              title="Paste item"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 transition hover:bg-emerald-200"
+            >
+              <PasteIcon />
+            </button>
           )}
           {hasSelectedFolder && (
             <>
@@ -727,6 +820,44 @@ export function Sidebar() {
                 className="rounded-md bg-red-600 px-3 py-1.5 text-sm text-white transition hover:bg-red-700"
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingPasteConflict && (
+        <div
+          className="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/20 px-4"
+          onClick={() => setPendingPasteConflict(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-4 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="text-sm font-semibold text-slate-900">Item already exists</p>
+            <p className="mt-2 text-sm text-slate-600">
+              <span className="font-medium text-slate-800">{pendingPasteConflict.item.name}</span> already exists in the destination.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingPasteConflict(null)}
+                className="rounded-md bg-slate-100 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-200"
+              >
+                Keep existing
+              </button>
+              <button
+                type="button"
+                onClick={() => void performPaste(
+                  pendingPasteConflict.item,
+                  pendingPasteConflict.destinationScope,
+                  pendingPasteConflict.destinationParentPath,
+                  true,
+                )}
+                className="rounded-md bg-red-600 px-3 py-1.5 text-sm text-white transition hover:bg-red-700"
+              >
+                Replace
               </button>
             </div>
           </div>
