@@ -5,6 +5,7 @@ import type {
   SaveSessionPromptMetadata,
   SamPreprocessingMode,
   SaveSessionResponse,
+  StorageItemKind,
   StorageScope,
   UserListItem,
 } from "./types";
@@ -133,6 +134,19 @@ export async function deleteFolder(scope: StorageScope, path: string) {
   });
   await fetchJson<{ message: string }>(`/files/folders?${params.toString()}`, {
     method: "DELETE",
+  });
+}
+
+export function renameItem(scope: StorageScope, path: string, newName: string, kind: StorageItemKind) {
+  return fetchJson<{ scope: StorageScope; path: string; name: string; kind: StorageItemKind }>("/files/items", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      scope,
+      path,
+      new_name: newName,
+      kind,
+    }),
   });
 }
 

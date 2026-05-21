@@ -28,6 +28,8 @@ export type FolderFile = {
   path: string;
 };
 
+export type StorageItemKind = "folder" | "file";
+
 export type FolderNode = {
   name: string;
   path: string;
