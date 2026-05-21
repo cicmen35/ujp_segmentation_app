@@ -851,10 +851,24 @@ export function Sidebar() {
               <input
                 value={pasteRenameName}
                 onChange={(event) => setPasteRenameName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter') return
+                  const nextName = pasteRenameName.trim()
+                  if (!nextName) return
+                  event.preventDefault()
+                  void performPaste(
+                    pendingPasteConflict.item,
+                    pendingPasteConflict.destinationScope,
+                    pendingPasteConflict.destinationParentPath,
+                    false,
+                    nextName,
+                  )
+                }}
                 onClick={(event) => event.stopPropagation()}
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-slate-400"
                 placeholder={pendingPasteConflict.item.name}
               />
+              <p className="mt-1 text-xs text-slate-400">Press Enter to paste with the typed name.</p>
             </div>
             <div className="mt-4 flex justify-end gap-2">
               <button
@@ -866,24 +880,6 @@ export function Sidebar() {
                 className="rounded-md bg-slate-100 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-200"
               >
                 Keep existing
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const nextName = pasteRenameName.trim()
-                  if (!nextName) return
-                  void performPaste(
-                    pendingPasteConflict.item,
-                    pendingPasteConflict.destinationScope,
-                    pendingPasteConflict.destinationParentPath,
-                    false,
-                    nextName,
-                  )
-                }}
-                disabled={!pasteRenameName.trim()}
-                className="rounded-md bg-slate-700 px-3 py-1.5 text-sm text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Rename
               </button>
               <button
                 type="button"
