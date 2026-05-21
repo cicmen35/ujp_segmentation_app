@@ -10,12 +10,21 @@ export function ImageCanvas() {
   const setBoundingBox = useSessionStore((s) => s.setBoundingBox);
   const promptPoints = useSessionStore((s) => s.promptPoints);
   const addPromptPoint = useSessionStore((s) => s.addPromptPoint);
+  const removeLastPoint = useSessionStore((s) => s.removeLastPoint);
 
   const [modalSrc, setModalSrc] = useState<{ src: string; alt: string; isOriginal: boolean } | null>(null);
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
 
   const boxEnabled = promptMode === 'box' || promptMode === 'box + points';
   const pointsEnabled = promptMode === 'points' || promptMode === 'box + points';
+
+  const handleModalUndoPrompt = () => {
+    if (promptPoints.length > 0) {
+      removeLastPoint();
+    } else if (boundingBox) {
+      setBoundingBox(null);
+    }
+  };
 
   if (!imageUrl) return <div className="text-slate-400">No image selected</div>;
 
@@ -124,6 +133,7 @@ export function ImageCanvas() {
           initialPoints={modalSrc.isOriginal ? promptPoints : []}
           onBoxDrawn={setBoundingBox}
           onPointPlaced={addPromptPoint}
+          onUndoPrompt={modalSrc.isOriginal ? handleModalUndoPrompt : undefined}
         />
       )}
     </>

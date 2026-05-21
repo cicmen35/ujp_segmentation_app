@@ -17,6 +17,8 @@ type Props = {
     onBoxDrawn?: (box: BoundingBox) => void
     /** Called when user places a point */
     onPointPlaced?: (point: PromptPoint) => void
+    /** Called when user undoes the most recent prompt action */
+    onUndoPrompt?: () => void
 }
 
 const DRAG_THRESHOLD = 5 // px – movement below this is a click, not a drag
@@ -44,6 +46,7 @@ export function ImageModal({
     initialPoints = [],
     onBoxDrawn,
     onPointPlaced,
+    onUndoPrompt,
 }: Props) {
     const backdropRef = useRef<HTMLDivElement>(null)
     const imgRef = useRef<HTMLImageElement>(null)
@@ -62,12 +65,49 @@ export function ImageModal({
     // Points state (local copy for display)
     const [points, setPoints] = useState<PromptPoint[]>(initialPoints)
 
+    useEffect(() => {
+        setBox(initialBox)
+    }, [initialBox])
+
+    useEffect(() => {
+        setPoints(initialPoints)
+    }, [initialPoints])
+
     // Close on Escape
     const handleKeyDown = useCallback(
         (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose()
+            if (e.key === 'Escape') {
+                onClose()
+                return
+            }
+
+            if (e.key !== 'Backspace') {
+                return
+            }
+
+            const target = e.target
+            if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+                return
+            }
+
+            if (!allowBoxDrawing && !allowPointPlacing) {
+                return
+            }
+
+            if (points.length > 0) {
+                e.preventDefault()
+                setPoints((prev) => prev.slice(0, -1))
+                onUndoPrompt?.()
+                return
+            }
+
+            if (box) {
+                e.preventDefault()
+                setBox(null)
+                onUndoPrompt?.()
+            }
         },
-        [onClose],
+        [allowBoxDrawing, allowPointPlacing, box, onClose, onUndoPrompt, points.length],
     )
 
     useEffect(() => {
@@ -179,6 +219,7 @@ export function ImageModal({
     const hints: string[] = ['Scroll to zoom']
     if (allowBoxDrawing) hints.push('Drag to draw box')
     if (allowPointPlacing) hints.push('Click = positive point', 'Shift+click = negative')
+    if (isInteractive) hints.push('Backspace = undo prompt')
     hints.push('Double-click to reset zoom')
 
     // Point radius scales with image size
