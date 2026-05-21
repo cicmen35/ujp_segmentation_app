@@ -37,6 +37,17 @@ def sanitize_folder_name(name: str) -> str:
     return candidate
 
 
+def sanitize_item_name(name: str) -> str:
+    candidate = Path(name).name.strip()
+    if not candidate:
+        raise HTTPException(status_code=400, detail="Name cannot be empty")
+
+    if candidate in {".", ".."} or "/" in candidate or "\\" in candidate:
+        raise HTTPException(status_code=400, detail="Name contains invalid characters")
+
+    return candidate
+
+
 def sanitize_filename(name: str) -> str:
     candidate = Path(name or "image.png").name.strip()
     if not candidate:
@@ -75,6 +86,32 @@ def resolve_relative_file(root: Path, relative_path: str) -> Path:
         raise HTTPException(status_code=404, detail="File not found")
 
     return candidate
+
+
+def rename_relative_item(root: Path, relative_path: str, new_name: str, kind: str) -> dict[str, str]:
+    root_resolved = root.resolve()
+    sanitized_name = sanitize_item_name(new_name)
+
+    if kind == "folder":
+        source = resolve_relative_directory(root_resolved, relative_path)
+    elif kind == "file":
+        source = resolve_relative_file(root_resolved, relative_path)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid item type")
+
+    if source.resolve() == root_resolved:
+        raise HTTPException(status_code=400, detail="Root folder cannot be renamed")
+
+    target = source.parent / sanitized_name
+    if target.exists() and target.resolve() != source.resolve():
+        raise HTTPException(status_code=409, detail="An item with that name already exists")
+
+    source.rename(target)
+    return {
+        "name": target.name,
+        "path": str(target.relative_to(root_resolved)),
+        "kind": kind,
+    }
 
 
 def build_folder_tree(root: Path) -> list[dict]:

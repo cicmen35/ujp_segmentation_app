@@ -12,6 +12,7 @@ from backend.services.storage_service import (
     build_session_folder,
     get_private_root,
     get_shared_root,
+    rename_relative_item,
     resolve_relative_directory,
     resolve_relative_file,
     sanitize_folder_name,
@@ -25,6 +26,13 @@ class CreateFolderRequest(BaseModel):
     scope: str
     name: str
     parent_path: str | None = None
+
+
+class RenameItemRequest(BaseModel):
+    scope: str
+    path: str
+    new_name: str
+    kind: str
 
 
 def get_scope_root(user: dict, scope: str):
@@ -80,6 +88,16 @@ def delete_folder(
 
     rmtree(target)
     return {"message": "Folder deleted"}
+
+
+@router.patch("/items")
+def rename_item(
+    request: RenameItemRequest,
+    user: dict = Depends(get_current_user),
+):
+    root = get_scope_root(user, request.scope)
+    renamed = rename_relative_item(root, request.path, request.new_name, request.kind)
+    return {"scope": request.scope, **renamed}
 
 
 @router.post("/save-session")
