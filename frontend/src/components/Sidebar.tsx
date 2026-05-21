@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
-import { createFolder, deleteFolder, fetchFolderTree, buildFileContentUrl } from '../lib/api/client'
+import { createFolder, deleteFolder, fetchFolderTree, buildFileContentUrl, renameItem } from '../lib/api/client'
 import { ImageModal } from './ImageModal'
-import type { FolderFile, FolderNode, StorageScope } from '../lib/api/types'
+import type { FolderFile, FolderNode, StorageItemKind, StorageScope } from '../lib/api/types'
 import { useSessionStore } from '../lib/store/session'
 
 const MIN_WIDTH = 220
@@ -18,20 +18,43 @@ type PendingDeleteConfirm = {
   scope: StorageScope
   path: string
 }
+type SelectedEntry = {
+  scope: StorageScope
+  path: string
+  kind: StorageItemKind
+}
+type PendingRename = {
+  scope: StorageScope
+  path: string
+  kind: StorageItemKind
+}
 
 type FolderTreeProps = {
   nodes: FolderNode[]
   scope: StorageScope
-  selectedScope: StorageScope | null
-  selectedPath: string | null
-  onSelect: (scope: StorageScope, path: string) => void
+  selectedEntry: SelectedEntry | null
+  onFolderSelect: (scope: StorageScope, path: string) => void
+  onFileSelect: (scope: StorageScope, file: FolderFile) => void
   pendingDraft: PendingFolderDraft | null
   draftName: string
   onDraftNameChange: (value: string) => void
   onDraftSubmit: () => void
   onDraftCancel: () => void
+  pendingRename: PendingRename | null
+  renameName: string
+  onRenameNameChange: (value: string) => void
+  onRenameSubmit: () => void
+  onRenameCancel: () => void
   onFileOpen: (scope: StorageScope, file: FolderFile) => void
   depth?: number
+}
+
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="currentColor">
+      <path d="m16.862 3.487 1.65-1.65a2.25 2.25 0 1 1 3.182 3.182l-1.65 1.65-3.182-3.182ZM14.74 5.61 3.75 16.6V20.25h3.65L18.39 9.26 14.74 5.61Z" />
+    </svg>
+  )
 }
 
 function FolderIcon({ selected }: { selected: boolean }) {
@@ -70,14 +93,19 @@ function isPreviewableImage(filename: string) {
 function FolderTree({
   nodes,
   scope,
-  selectedScope,
-  selectedPath,
-  onSelect,
+  selectedEntry,
+  onFolderSelect,
+  onFileSelect,
   pendingDraft,
   draftName,
   onDraftNameChange,
   onDraftSubmit,
   onDraftCancel,
+  pendingRename,
+  renameName,
+  onRenameNameChange,
+  onRenameSubmit,
+  onRenameCancel,
   onFileOpen,
   depth = 0,
 }: FolderTreeProps) {
@@ -90,27 +118,63 @@ function FolderTree({
       <div className="space-y-1">
         {files.map((file) => {
           const isPreviewable = isPreviewableImage(file.name)
+          const isSelected = selectedEntry?.scope === scope && selectedEntry.path === file.path && selectedEntry.kind === 'file'
+          const isRenaming = pendingRename?.scope === scope && pendingRename.path === file.path && pendingRename.kind === 'file'
+
+          if (isRenaming) {
+            return (
+              <div className="py-1" key={`${scope}:rename:file:${file.path}`}>
+                <div
+                  className="flex items-center rounded-lg border border-slate-300 bg-white px-2 py-1.5"
+                  style={{ paddingLeft: `${rowDepth * 14 + 8}px` }}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <FileIcon />
+                  <input
+                    autoFocus
+                    value={renameName}
+                    onChange={(event) => onRenameNameChange(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        onRenameSubmit()
+                      } else if (event.key === 'Escape') {
+                        event.preventDefault()
+                        onRenameCancel()
+                      }
+                    }}
+                    onBlur={onRenameCancel}
+                    placeholder="File name"
+                    className="ml-2 w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+            )
+          }
 
           return (
-          <button
-            type="button"
-            key={`${scope}:file:${file.path}`}
-            onClick={(event) => {
-              event.stopPropagation()
-              if (isPreviewable) {
-                onFileOpen(scope, file)
-              }
-            }}
-            className={`flex w-full items-center rounded-lg px-2 py-1.5 text-left text-sm transition ${
-              isPreviewable
-                ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
-                : 'cursor-default text-slate-400'
-            }`}
-            style={{ paddingLeft: `${rowDepth * 14 + 8}px` }}
-          >
-            <FileIcon />
-            <span className="ml-2 truncate">{file.name}</span>
-          </button>
+            <button
+              type="button"
+              key={`${scope}:file:${file.path}`}
+              onClick={(event) => {
+                event.stopPropagation()
+                onFileSelect(scope, file)
+                if (isPreviewable) {
+                  onFileOpen(scope, file)
+                }
+              }}
+              className={`flex w-full items-center rounded-lg px-2 py-1.5 text-left text-sm transition ${
+                isSelected
+                  ? 'bg-slate-900 text-white'
+                  : isPreviewable
+                    ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                    : 'text-slate-400 hover:bg-slate-100'
+              }`}
+              style={{ paddingLeft: `${rowDepth * 14 + 8}px` }}
+            >
+              <FileIcon />
+              <span className="ml-2 truncate">{file.name}</span>
+            </button>
           )
         })}
       </div>
@@ -156,35 +220,70 @@ function FolderTree({
     <div className="space-y-1">
       {renderDraftRow(null, depth)}
       {nodes.map((node) => {
-        const isSelected = selectedScope === scope && selectedPath === node.path
+        const isSelected = selectedEntry?.scope === scope && selectedEntry.path === node.path && selectedEntry.kind === 'folder'
+        const isRenaming = pendingRename?.scope === scope && pendingRename.path === node.path && pendingRename.kind === 'folder'
         return (
           <div key={`${scope}:${node.path}`}>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation()
-                onSelect(scope, node.path)
-              }}
-              className={`flex w-full items-center rounded-lg px-2 py-1.5 text-left text-sm transition ${
-                isSelected ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
-              }`}
-              style={{ paddingLeft: `${depth * 14 + 8}px` }}
-            >
-              <FolderIcon selected={isSelected} />
-              <span className="ml-2 truncate">{node.name}</span>
-            </button>
+            {isRenaming ? (
+              <div className="py-1">
+                <div
+                  className="flex items-center rounded-lg border border-slate-300 bg-white px-2 py-1.5"
+                  style={{ paddingLeft: `${depth * 14 + 8}px` }}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <FolderIcon selected={false} />
+                  <input
+                    autoFocus
+                    value={renameName}
+                    onChange={(event) => onRenameNameChange(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        onRenameSubmit()
+                      } else if (event.key === 'Escape') {
+                        event.preventDefault()
+                        onRenameCancel()
+                      }
+                    }}
+                    onBlur={onRenameCancel}
+                    placeholder="Folder name"
+                    className="ml-2 w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onFolderSelect(scope, node.path)
+                }}
+                className={`flex w-full items-center rounded-lg px-2 py-1.5 text-left text-sm transition ${
+                  isSelected ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+                style={{ paddingLeft: `${depth * 14 + 8}px` }}
+              >
+                <FolderIcon selected={isSelected} />
+                <span className="ml-2 truncate">{node.name}</span>
+              </button>
+            )}
             {node.children.length > 0 && (
               <FolderTree
                 nodes={node.children}
                 scope={scope}
-                selectedScope={selectedScope}
-                selectedPath={selectedPath}
-                onSelect={onSelect}
+                selectedEntry={selectedEntry}
+                onFolderSelect={onFolderSelect}
+                onFileSelect={onFileSelect}
                 pendingDraft={pendingDraft}
                 draftName={draftName}
                 onDraftNameChange={onDraftNameChange}
                 onDraftSubmit={onDraftSubmit}
                 onDraftCancel={onDraftCancel}
+                pendingRename={pendingRename}
+                renameName={renameName}
+                onRenameNameChange={onRenameNameChange}
+                onRenameSubmit={onRenameSubmit}
+                onRenameCancel={onRenameCancel}
                 onFileOpen={onFileOpen}
                 depth={depth + 1}
               />
@@ -199,8 +298,6 @@ function FolderTree({
 }
 
 export function Sidebar() {
-  const selectedSaveScope = useSessionStore((s) => s.selectedSaveScope)
-  const selectedSavePath = useSessionStore((s) => s.selectedSavePath)
   const setSelectedSaveTarget = useSessionStore((s) => s.setSelectedSaveTarget)
   const folderTreeVersion = useSessionStore((s) => s.folderTreeVersion)
   const bumpFolderTreeVersion = useSessionStore((s) => s.bumpFolderTreeVersion)
@@ -211,7 +308,10 @@ export function Sidebar() {
   const [folderError, setFolderError] = useState<string | null>(null)
   const [pendingDraft, setPendingDraft] = useState<PendingFolderDraft | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDeleteConfirm | null>(null)
+  const [selectedEntry, setSelectedEntry] = useState<SelectedEntry | null>(null)
+  const [pendingRename, setPendingRename] = useState<PendingRename | null>(null)
   const [draftName, setDraftName] = useState('')
+  const [renameName, setRenameName] = useState('')
   const [previewFile, setPreviewFile] = useState<{ src: string; name: string } | null>(null)
   const dragModeRef = useRef<DragMode>(null)
   const startXRef = useRef(0)
@@ -322,6 +422,11 @@ export function Sidebar() {
     setDraftName('')
   }, [])
 
+  const cancelRename = useCallback(() => {
+    setPendingRename(null)
+    setRenameName('')
+  }, [])
+
   const submitFolderDraft = useCallback(async () => {
     if (!pendingDraft) return
 
@@ -343,9 +448,48 @@ export function Sidebar() {
   }, [bumpFolderTreeVersion, cancelFolderDraft, draftName, pendingDraft, setSelectedSaveTarget])
 
   const requestDeleteSelectedFolder = (scope: StorageScope) => {
-    if (selectedSaveScope !== scope || !selectedSavePath) return
-    setPendingDelete({ scope, path: selectedSavePath })
+    if (!selectedEntry || selectedEntry.scope !== scope || selectedEntry.kind !== 'folder') return
+    setPendingDelete({ scope, path: selectedEntry.path })
   }
+
+  const startRenameSelectedItem = (scope: StorageScope) => {
+    if (!selectedEntry || selectedEntry.scope !== scope) return
+    const currentName = selectedEntry.path.split('/').pop() ?? ''
+    setPendingRename({
+      scope,
+      path: selectedEntry.path,
+      kind: selectedEntry.kind,
+    })
+    setRenameName(currentName)
+    setFolderError(null)
+  }
+
+  const submitRename = useCallback(async () => {
+    if (!pendingRename) return
+
+    const nextName = renameName.trim()
+    if (!nextName) {
+      cancelRename()
+      return
+    }
+
+    try {
+      const renamed = await renameItem(pendingRename.scope, pendingRename.path, nextName, pendingRename.kind)
+      setSelectedEntry({
+        scope: renamed.scope,
+        path: renamed.path,
+        kind: renamed.kind,
+      })
+      if (renamed.kind === 'folder') {
+        setSelectedSaveTarget(renamed.scope, renamed.path)
+      }
+      bumpFolderTreeVersion()
+      setFolderError(null)
+      cancelRename()
+    } catch (error) {
+      setFolderError(error instanceof Error ? error.message : 'Failed to rename item')
+    }
+  }, [bumpFolderTreeVersion, cancelRename, pendingRename, renameName, setSelectedSaveTarget])
 
   const confirmDeleteSelectedFolder = async () => {
     if (!pendingDelete) return
@@ -362,7 +506,8 @@ export function Sidebar() {
   }
 
   const renderSelectionActions = (scope: StorageScope) => {
-    const isScopeSelected = selectedSaveScope === scope
+    const hasSelectedFolder = selectedEntry?.scope === scope && selectedEntry.kind === 'folder'
+    const hasSelectedItem = selectedEntry?.scope === scope
 
     return (
       <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
@@ -377,18 +522,38 @@ export function Sidebar() {
           >
             New folder
           </button>
-          {isScopeSelected && selectedSavePath && (
+          {hasSelectedFolder && selectedEntry && (
             <>
               <button
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation()
-                  startFolderDraft(scope, selectedSavePath)
+                  startFolderDraft(scope, selectedEntry.path)
                 }}
                 className="rounded-md bg-slate-200 px-2.5 py-1 text-xs text-slate-700 transition hover:bg-slate-300"
               >
                 Add subfolder
               </button>
+            </>
+          )}
+          {hasSelectedItem && (
+            <>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  startRenameSelectedItem(scope)
+                }}
+                aria-label="Rename item"
+                title="Rename item"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-slate-200 text-slate-700 transition hover:bg-slate-300"
+              >
+                <PencilIcon />
+              </button>
+            </>
+          )}
+          {hasSelectedFolder && (
+            <>
               <button
                 type="button"
                 onClick={(event) => {
@@ -423,6 +588,15 @@ export function Sidebar() {
     })
   }
 
+  const handleFolderSelect = (scope: StorageScope, path: string) => {
+    setSelectedEntry({ scope, path, kind: 'folder' })
+    setSelectedSaveTarget(scope, path)
+  }
+
+  const handleFileSelect = (scope: StorageScope, file: FolderFile) => {
+    setSelectedEntry({ scope, path: file.path, kind: 'file' })
+  }
+
   return (
     <aside
       ref={sidebarRef}
@@ -433,6 +607,8 @@ export function Sidebar() {
         className="flex h-full w-full flex-col px-4 py-4"
         onClick={() => {
           cancelFolderDraft()
+          cancelRename()
+          setSelectedEntry(null)
           setSelectedSaveTarget(null, null)
         }}
       >
@@ -451,14 +627,19 @@ export function Sidebar() {
             <FolderTree
               nodes={sharedFolders}
               scope="shared"
-              selectedScope={selectedSaveScope}
-              selectedPath={selectedSavePath}
-              onSelect={setSelectedSaveTarget}
+              selectedEntry={selectedEntry}
+              onFolderSelect={handleFolderSelect}
+              onFileSelect={handleFileSelect}
               pendingDraft={pendingDraft}
               draftName={draftName}
               onDraftNameChange={setDraftName}
               onDraftSubmit={() => void submitFolderDraft()}
               onDraftCancel={cancelFolderDraft}
+              pendingRename={pendingRename}
+              renameName={renameName}
+              onRenameNameChange={setRenameName}
+              onRenameSubmit={() => void submitRename()}
+              onRenameCancel={cancelRename}
               onFileOpen={handleFileOpen}
             />
           </div>
@@ -484,14 +665,19 @@ export function Sidebar() {
             <FolderTree
               nodes={privateFolders}
               scope="private"
-              selectedScope={selectedSaveScope}
-              selectedPath={selectedSavePath}
-              onSelect={setSelectedSaveTarget}
+              selectedEntry={selectedEntry}
+              onFolderSelect={handleFolderSelect}
+              onFileSelect={handleFileSelect}
               pendingDraft={pendingDraft}
               draftName={draftName}
               onDraftNameChange={setDraftName}
               onDraftSubmit={() => void submitFolderDraft()}
               onDraftCancel={cancelFolderDraft}
+              pendingRename={pendingRename}
+              renameName={renameName}
+              onRenameNameChange={setRenameName}
+              onRenameSubmit={() => void submitRename()}
+              onRenameCancel={cancelRename}
               onFileOpen={handleFileOpen}
             />
           </div>
