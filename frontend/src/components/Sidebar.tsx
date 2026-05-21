@@ -63,6 +63,10 @@ function FileIcon() {
   )
 }
 
+function isPreviewableImage(filename: string) {
+  return /\.(png|jpe?g|webp|gif|bmp)$/i.test(filename)
+}
+
 function FolderTree({
   nodes,
   scope,
@@ -84,21 +88,31 @@ function FolderTree({
 
     return (
       <div className="space-y-1">
-        {files.map((file) => (
+        {files.map((file) => {
+          const isPreviewable = isPreviewableImage(file.name)
+
+          return (
           <button
             type="button"
             key={`${scope}:file:${file.path}`}
             onClick={(event) => {
               event.stopPropagation()
-              onFileOpen(scope, file)
+              if (isPreviewable) {
+                onFileOpen(scope, file)
+              }
             }}
-            className="flex w-full items-center rounded-lg px-2 py-1.5 text-left text-sm text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+            className={`flex w-full items-center rounded-lg px-2 py-1.5 text-left text-sm transition ${
+              isPreviewable
+                ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                : 'cursor-default text-slate-400'
+            }`}
             style={{ paddingLeft: `${rowDepth * 14 + 8}px` }}
           >
             <FileIcon />
             <span className="ml-2 truncate">{file.name}</span>
           </button>
-        ))}
+          )
+        })}
       </div>
     )
   }
