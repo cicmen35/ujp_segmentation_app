@@ -159,6 +159,9 @@ function FolderTree({
               onClick={(event) => {
                 event.stopPropagation()
                 onFileSelect(scope, file)
+              }}
+              onDoubleClick={(event) => {
+                event.stopPropagation()
                 if (isPreviewable) {
                   onFileOpen(scope, file)
                 }
