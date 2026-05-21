@@ -26,33 +26,56 @@ def get_private_root(user_id: str) -> Path:
     return root
 
 
-def sanitize_folder_name(name: str) -> str:
-    candidate = name.strip()
+def _sanitize_name(
+    name: str | None,
+    *,
+    fallback: str | None = None,
+    trim_to_basename: bool = False,
+    empty_detail: str,
+    invalid_detail: str,
+) -> str:
+    raw_value = name if name is not None else fallback
+    candidate = str(raw_value or "").strip()
+
+    if trim_to_basename:
+        candidate = Path(candidate).name.strip()
+
     if not candidate:
-        raise HTTPException(status_code=400, detail="Folder name cannot be empty")
+        if fallback is not None:
+            return fallback
+        raise HTTPException(status_code=400, detail=empty_detail)
 
     if candidate in {".", ".."} or "/" in candidate or "\\" in candidate:
-        raise HTTPException(status_code=400, detail="Folder name contains invalid characters")
+        raise HTTPException(status_code=400, detail=invalid_detail)
 
     return candidate
+
+
+def sanitize_folder_name(name: str) -> str:
+    return _sanitize_name(
+        name,
+        empty_detail="Folder name cannot be empty",
+        invalid_detail="Folder name contains invalid characters",
+    )
 
 
 def sanitize_item_name(name: str) -> str:
-    candidate = Path(name).name.strip()
-    if not candidate:
-        raise HTTPException(status_code=400, detail="Name cannot be empty")
-
-    if candidate in {".", ".."} or "/" in candidate or "\\" in candidate:
-        raise HTTPException(status_code=400, detail="Name contains invalid characters")
-
-    return candidate
+    return _sanitize_name(
+        name,
+        trim_to_basename=True,
+        empty_detail="Name cannot be empty",
+        invalid_detail="Name contains invalid characters",
+    )
 
 
 def sanitize_filename(name: str) -> str:
-    candidate = Path(name or "image.png").name.strip()
-    if not candidate:
-        return "image.png"
-    return candidate
+    return _sanitize_name(
+        name,
+        fallback="image.png",
+        trim_to_basename=True,
+        empty_detail="Filename cannot be empty",
+        invalid_detail="Filename contains invalid characters",
+    )
 
 
 def sanitize_session_stem(name: str) -> str:
