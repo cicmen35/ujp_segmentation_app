@@ -1,5 +1,6 @@
 import type {
   AuthUser,
+  CopiedStorageItem,
   FolderTreeResponse,
   PromptPreset,
   SaveSessionPromptMetadata,
@@ -146,6 +147,26 @@ export function renameItem(scope: StorageScope, path: string, newName: string, k
       path,
       new_name: newName,
       kind,
+    }),
+  });
+}
+
+export function copyItem(
+  copiedItem: CopiedStorageItem,
+  destinationScope: StorageScope,
+  destinationParentPath: string | null,
+  replace = false,
+) {
+  return fetchJson<{ scope: StorageScope; path: string; name: string; kind: StorageItemKind }>("/files/items/copy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      source_scope: copiedItem.sourceScope,
+      source_path: copiedItem.path,
+      destination_scope: destinationScope,
+      destination_parent_path: destinationParentPath,
+      kind: copiedItem.kind,
+      replace,
     }),
   });
 }

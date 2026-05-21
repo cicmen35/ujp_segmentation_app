@@ -30,6 +30,13 @@ export type FolderFile = {
 
 export type StorageItemKind = "folder" | "file";
 
+export type CopiedStorageItem = {
+  sourceScope: StorageScope;
+  path: string;
+  kind: StorageItemKind;
+  name: string;
+};
+
 export type FolderNode = {
   name: string;
   path: string;
