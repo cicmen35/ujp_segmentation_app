@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useSessionStore } from "../../lib/store/session";
-import { ImageModal } from "../ImageModal";
+import { useSessionStore } from "../lib/store/session";
+import { ImageModal } from "./ImageModal";
 
 export function ImageCanvas() {
   const imageUrl = useSessionStore((s) => s.imageUrl);
@@ -26,7 +26,6 @@ export function ImageCanvas() {
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Original image */}
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
           <p className="mb-2 text-xs font-semibold text-slate-700">Original image</p>
           <button
@@ -44,7 +43,6 @@ export function ImageCanvas() {
               }}
             />
 
-            {/* Bounding box + points overlay on thumbnail */}
             {naturalSize && (boundingBox || promptPoints.length > 0) && (
               <svg
                 className="pointer-events-none absolute inset-0 h-full w-full rounded-xl"
@@ -85,7 +83,6 @@ export function ImageCanvas() {
           <p className="mt-1.5 text-center text-[11px] text-slate-400">Click to enlarge</p>
         </div>
 
-        {/* Mask */}
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
           <p className="mb-2 text-xs font-semibold text-slate-700">Image mask</p>
           {maskUrl ? (
@@ -116,7 +113,6 @@ export function ImageCanvas() {
         </div>
       </div>
 
-      {/* Lightbox modal */}
       {modalSrc && (
         <ImageModal
           src={modalSrc.src}
@@ -133,4 +129,3 @@ export function ImageCanvas() {
     </>
   );
 }
-

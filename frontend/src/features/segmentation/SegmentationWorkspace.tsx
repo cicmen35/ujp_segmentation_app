@@ -1,4 +1,4 @@
-import { ImageCanvas } from '../../components/ImageCanvas/ImageCanvas'
+import { ImageCanvas } from '../../components/ImageCanvas'
 import { useSessionStore } from '../../lib/store/session'
 import { UploadDropzone } from '../upload/UploadDropzone'
 

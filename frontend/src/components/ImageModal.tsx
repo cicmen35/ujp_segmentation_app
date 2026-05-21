@@ -50,6 +50,7 @@ export function ImageModal({
 
     // Zoom
     const [scale, setScale] = useState(1)
+    const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null)
 
     // Box drawing state
     const [box, setBox] = useState<BoundingBox | null>(initialBox)
@@ -181,8 +182,8 @@ export function ImageModal({
     hints.push('Double-click to reset zoom')
 
     // Point radius scales with image size
-    const pointRadius = imgRef.current
-        ? Math.max(6, Math.min(imgRef.current.naturalWidth, imgRef.current.naturalHeight) * 0.008)
+    const pointRadius = imageSize
+        ? Math.max(6, Math.min(imageSize.width, imageSize.height) * 0.008)
         : 8
 
     return (
@@ -232,11 +233,18 @@ export function ImageModal({
                         src={src}
                         alt={alt}
                         draggable={false}
+                        onLoad={(event) => {
+                            const img = event.currentTarget
+                            setImageSize({
+                                width: img.naturalWidth,
+                                height: img.naturalHeight,
+                            })
+                        }}
                         className="block max-h-[85vh] max-w-[85vw] rounded-xl shadow-2xl"
                     />
 
                     {/* SVG overlay for box + points */}
-                    {imgRef.current && (activeBox || points.length > 0) && (
+                    {imageSize && (activeBox || points.length > 0) && (
                         <svg
                             style={{
                                 position: 'absolute',
@@ -245,7 +253,7 @@ export function ImageModal({
                                 height: '100%',
                                 pointerEvents: 'none',
                             }}
-                            viewBox={`0 0 ${imgRef.current.naturalWidth} ${imgRef.current.naturalHeight}`}
+                            viewBox={`0 0 ${imageSize.width} ${imageSize.height}`}
                             preserveAspectRatio="none"
                         >
                             {/* Bounding box */}
