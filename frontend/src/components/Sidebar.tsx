@@ -340,6 +340,7 @@ export function Sidebar() {
   const [pendingRename, setPendingRename] = useState<PendingRename | null>(null)
   const [copiedItem, setCopiedItem] = useState<CopiedStorageItem | null>(null)
   const [pendingPasteConflict, setPendingPasteConflict] = useState<PendingPasteConflict | null>(null)
+  const [pasteRenameName, setPasteRenameName] = useState('')
   const [draftName, setDraftName] = useState('')
   const [renameName, setRenameName] = useState('')
   const [previewFile, setPreviewFile] = useState<{ src: string; name: string } | null>(null)
@@ -526,9 +527,10 @@ export function Sidebar() {
     destinationScope: StorageScope,
     destinationParentPath: string | null,
     replace = false,
+    newName?: string,
   ) => {
     try {
-      const copied = await copyItem(item, destinationScope, destinationParentPath, replace)
+      const copied = await copyItem(item, destinationScope, destinationParentPath, replace, newName)
       setSelectedEntry({
         scope: copied.scope,
         path: copied.path,
@@ -539,6 +541,7 @@ export function Sidebar() {
       }
       setFolderError(null)
       setPendingPasteConflict(null)
+      setPasteRenameName('')
       bumpFolderTreeVersion()
     } catch (error) {
       if (error instanceof Error && error.message.toLowerCase().includes('already exists')) {
@@ -547,6 +550,7 @@ export function Sidebar() {
           destinationScope,
           destinationParentPath,
         })
+        setPasteRenameName(newName ?? item.name)
         return
       }
 
@@ -829,7 +833,10 @@ export function Sidebar() {
       {pendingPasteConflict && (
         <div
           className="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/20 px-4"
-          onClick={() => setPendingPasteConflict(null)}
+          onClick={() => {
+            setPendingPasteConflict(null)
+            setPasteRenameName('')
+          }}
         >
           <div
             className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-4 shadow-xl"
@@ -839,13 +846,44 @@ export function Sidebar() {
             <p className="mt-2 text-sm text-slate-600">
               <span className="font-medium text-slate-800">{pendingPasteConflict.item.name}</span> already exists in the destination.
             </p>
+            <div className="mt-3">
+              <label className="block text-xs font-medium text-slate-500">Paste with a different name</label>
+              <input
+                value={pasteRenameName}
+                onChange={(event) => setPasteRenameName(event.target.value)}
+                onClick={(event) => event.stopPropagation()}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-slate-400"
+                placeholder={pendingPasteConflict.item.name}
+              />
+            </div>
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setPendingPasteConflict(null)}
+                onClick={() => {
+                  setPendingPasteConflict(null)
+                  setPasteRenameName('')
+                }}
                 className="rounded-md bg-slate-100 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-200"
               >
                 Keep existing
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextName = pasteRenameName.trim()
+                  if (!nextName) return
+                  void performPaste(
+                    pendingPasteConflict.item,
+                    pendingPasteConflict.destinationScope,
+                    pendingPasteConflict.destinationParentPath,
+                    false,
+                    nextName,
+                  )
+                }}
+                disabled={!pasteRenameName.trim()}
+                className="rounded-md bg-slate-700 px-3 py-1.5 text-sm text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Rename
               </button>
               <button
                 type="button"

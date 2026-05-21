@@ -43,6 +43,7 @@ class CopyItemRequest(BaseModel):
     destination_parent_path: str | None = None
     kind: str
     replace: bool = False
+    new_name: str | None = None
 
 
 def get_scope_root(user: dict, scope: str):
@@ -124,6 +125,7 @@ def copy_item(
         destination_root,
         request.destination_parent_path,
         replace=request.replace,
+        new_name=request.new_name,
     )
     return {"scope": request.destination_scope, **copied}
 

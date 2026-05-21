@@ -145,6 +145,7 @@ def copy_relative_item(
     destination_parent_path: str | None = None,
     *,
     replace: bool = False,
+    new_name: str | None = None,
 ) -> dict[str, str]:
     source_root_resolved = source_root.resolve()
     destination_root_resolved = destination_root.resolve()
@@ -160,7 +161,8 @@ def copy_relative_item(
         raise HTTPException(status_code=400, detail="Root folder cannot be copied")
 
     destination_parent = resolve_relative_directory(destination_root_resolved, destination_parent_path)
-    target = destination_parent / source.name
+    target_name = sanitize_item_name(new_name) if new_name is not None else source.name
+    target = destination_parent / target_name
 
     if target.exists():
         if not replace:

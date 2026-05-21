@@ -156,6 +156,7 @@ export function copyItem(
   destinationScope: StorageScope,
   destinationParentPath: string | null,
   replace = false,
+  newName?: string,
 ) {
   return fetchJson<{ scope: StorageScope; path: string; name: string; kind: StorageItemKind }>("/files/items/copy", {
     method: "POST",
@@ -167,6 +168,7 @@ export function copyItem(
       destination_parent_path: destinationParentPath,
       kind: copiedItem.kind,
       replace,
+      new_name: newName,
     }),
   });
 }
