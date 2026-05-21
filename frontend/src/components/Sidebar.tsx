@@ -224,6 +224,9 @@ function FolderTree({
       {renderDraftRow(null, depth)}
       {nodes.map((node) => {
         const isSelected = selectedEntry?.scope === scope && selectedEntry.path === node.path && selectedEntry.kind === 'folder'
+        const hasSelectedFile = selectedEntry?.scope === scope
+          && selectedEntry.kind === 'file'
+          && selectedEntry.path.startsWith(`${node.path}/`)
         const isRenaming = pendingRename?.scope === scope && pendingRename.path === node.path && pendingRename.kind === 'folder'
         return (
           <div key={`${scope}:${node.path}`}>
@@ -291,7 +294,7 @@ function FolderTree({
                 depth={depth + 1}
               />
             )}
-            {isSelected && renderFiles(node.files, depth + 1)}
+            {(isSelected || hasSelectedFile) && renderFiles(node.files, depth + 1)}
             {renderDraftRow(node.path, depth + 1)}
           </div>
         )
