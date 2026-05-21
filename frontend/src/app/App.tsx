@@ -81,11 +81,9 @@ export function App() {
 
             <div className="flex gap-4">
               <SegmentationToolbar
-                isLoggedIn={auth.isLoggedIn}
                 onReset={clear}
                 onUndo={handleUndo}
                 hasPromptData={hasPromptData}
-                pushToast={pushToast}
               />
               <StorageActions
                 maskUrl={maskUrl}
