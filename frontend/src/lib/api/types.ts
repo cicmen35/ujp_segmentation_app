@@ -55,3 +55,7 @@ export type PromptPreset = {
   bounding_box: BoundingBox | null;
   prompt_points: PromptPoint[];
 };
+
+export type SaveSessionPromptMetadata = PromptPreset & {
+  created_at: string;
+};

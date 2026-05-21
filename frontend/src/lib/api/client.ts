@@ -2,6 +2,7 @@ import type {
   AuthUser,
   FolderTreeResponse,
   PromptPreset,
+  SaveSessionPromptMetadata,
   SamPreprocessingMode,
   SaveSessionResponse,
   StorageScope,
@@ -140,6 +141,7 @@ export async function saveSession(
   maskBlob: Blob,
   scope: StorageScope,
   parentPath: string | null,
+  promptMetadata?: SaveSessionPromptMetadata,
 ) {
   const originalStem = originalImage.name.replace(/\.[^.]+$/, "") || "image";
   const formData = new FormData();
@@ -147,6 +149,9 @@ export async function saveSession(
   formData.append("mask_image", new File([maskBlob], `${originalStem}_mask.png`, { type: "image/png" }));
   formData.append("scope", scope);
   formData.append("parent_path", parentPath ?? "");
+  if (promptMetadata) {
+    formData.append("prompt_metadata", JSON.stringify(promptMetadata));
+  }
 
   const response = await fetch(`${API}/files/save-session`, {
     method: "POST",
