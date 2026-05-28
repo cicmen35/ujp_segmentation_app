@@ -119,6 +119,7 @@ export function App() {
           authMode={auth.authMode}
           username={auth.username}
           password={auth.password}
+          confirmPassword={auth.confirmPassword}
           loginError={auth.loginError}
           isSubmittingLogin={auth.isSubmittingLogin}
           onClose={auth.closeLogin}
@@ -126,6 +127,7 @@ export function App() {
           onAuthModeToggle={auth.toggleAuthMode}
           onUsernameChange={auth.setUsername}
           onPasswordChange={auth.setPassword}
+          onConfirmPasswordChange={auth.setConfirmPassword}
         />
       )}
     </div>

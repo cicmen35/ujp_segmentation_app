@@ -16,6 +16,7 @@ type UseAuthControllerResult = {
   authMode: AuthMode
   username: string
   password: string
+  confirmPassword: string
   loginError: string | null
   isSubmittingLogin: boolean
   userToDelete: string
@@ -28,6 +29,7 @@ type UseAuthControllerResult = {
   toggleAuthMode: () => void
   setUsername: (value: string) => void
   setPassword: (value: string) => void
+  setConfirmPassword: (value: string) => void
   toggleDeleteUsers: () => void
   setUserToDelete: (value: string) => void
   handleAuthSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>
@@ -50,6 +52,7 @@ export function useAuthController(): UseAuthControllerResult {
   const [authMode, setAuthMode] = useState<AuthMode>('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [userToDelete, setUserToDelete] = useState('')
   const [deleteUserError, setDeleteUserError] = useState<string | null>(null)
   const [deleteUserSuccess, setDeleteUserSuccess] = useState<string | null>(null)
@@ -110,15 +113,18 @@ export function useAuthController(): UseAuthControllerResult {
   const openLogin = () => {
     setLoginError(null)
     setAuthMode('login')
+    setConfirmPassword('')
     setIsLoginOpen(true)
   }
 
   const closeLogin = () => {
+    setConfirmPassword('')
     setIsLoginOpen(false)
   }
 
   const toggleAuthMode = () => {
     setLoginError(null)
+    setConfirmPassword('')
     setAuthMode((current) => (current === 'login' ? 'register' : 'login'))
   }
 
@@ -131,6 +137,12 @@ export function useAuthController(): UseAuthControllerResult {
   const handleAuthSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setLoginError(null)
+
+    if (authMode === 'register' && password !== confirmPassword) {
+      setLoginError('Passwords do not match')
+      return
+    }
+
     setIsSubmittingLogin(true)
 
     try {
@@ -140,6 +152,7 @@ export function useAuthController(): UseAuthControllerResult {
       setAuth(user)
       setIsLoginOpen(false)
       setPassword('')
+      setConfirmPassword('')
       clear()
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : 'Login failed')
@@ -157,6 +170,7 @@ export function useAuthController(): UseAuthControllerResult {
       clear()
       clearAuth()
       setPassword('')
+      setConfirmPassword('')
       setLoginError(null)
       setIsLoginOpen(false)
       setIsDeleteUsersOpen(false)
@@ -195,6 +209,7 @@ export function useAuthController(): UseAuthControllerResult {
     authMode,
     username,
     password,
+    confirmPassword,
     loginError,
     isSubmittingLogin,
     userToDelete,
@@ -207,6 +222,7 @@ export function useAuthController(): UseAuthControllerResult {
     toggleAuthMode,
     setUsername,
     setPassword,
+    setConfirmPassword,
     toggleDeleteUsers,
     setUserToDelete,
     handleAuthSubmit,
