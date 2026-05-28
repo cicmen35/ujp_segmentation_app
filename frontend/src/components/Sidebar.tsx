@@ -188,13 +188,12 @@ function FolderTree({
                   onFileOpen(scope, file)
                 }
               }}
-              className={`flex w-full items-center rounded-lg px-2 py-1.5 text-left text-sm transition ${
-                isSelected
+              className={`flex w-full items-center rounded-lg px-2 py-1.5 text-left text-sm transition ${isSelected
                   ? 'bg-slate-900 text-white'
                   : isPreviewable
                     ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
                     : 'text-slate-400 hover:bg-slate-100'
-              }`}
+                }`}
               style={{ paddingLeft: `${rowDepth * 14 + 8}px` }}
             >
               <FileIcon />
@@ -286,9 +285,8 @@ function FolderTree({
                   event.stopPropagation()
                   onFolderSelect(scope, node.path)
                 }}
-                className={`flex w-full items-center rounded-lg px-2 py-1.5 text-left text-sm transition ${
-                  isSelected ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
-                }`}
+                className={`flex w-full items-center rounded-lg px-2 py-1.5 text-left text-sm transition ${isSelected ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
                 style={{ paddingLeft: `${depth * 14 + 8}px` }}
               >
                 <FolderIcon selected={isSelected} />
@@ -879,7 +877,7 @@ export function Sidebar() {
                 }}
                 className="rounded-md bg-slate-100 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-200"
               >
-                Keep existing
+                Keep original
               </button>
               <button
                 type="button"
