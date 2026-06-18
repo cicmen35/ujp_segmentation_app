@@ -13,6 +13,7 @@ from backend.services.storage_service import (
     copy_relative_item,
     get_private_root,
     get_shared_root,
+    load_saved_session,
     rename_relative_item,
     resolve_relative_directory,
     resolve_relative_file,
@@ -167,6 +168,17 @@ async def save_session(
         "original_image": original_filename,
         "mask_image": mask_filename,
     }
+
+
+@router.get("/session")
+def get_saved_session(
+    scope: str,
+    path: str,
+    user: dict = Depends(get_current_user),
+):
+    root = get_scope_root(user, scope)
+    session_payload = load_saved_session(root, path)
+    return {"scope": scope, **session_payload}
 
 
 @router.get("/content")

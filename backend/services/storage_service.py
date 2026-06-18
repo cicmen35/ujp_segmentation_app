@@ -9,6 +9,8 @@ from fastapi import HTTPException
 
 from backend.config import STORAGE_ROOT
 
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
+
 
 def ensure_storage_root() -> Path:
     STORAGE_ROOT.mkdir(parents=True, exist_ok=True)
@@ -187,7 +189,56 @@ def copy_relative_item(
         "path": str(target.relative_to(destination_root_resolved)),
         "kind": kind,
     }
-    
+
+
+def _get_session_image_files(directory: Path) -> tuple[Path, Path] | None:
+    image_files = sorted(
+        [child for child in directory.iterdir() if child.is_file() and child.suffix.lower() in IMAGE_EXTENSIONS],
+        key=lambda child: child.name.lower(),
+    )
+    mask_files = [child for child in image_files if child.stem.lower().endswith("_mask")]
+    if len(mask_files) != 1:
+        return None
+
+    original_files = [child for child in image_files if child != mask_files[0]]
+    if len(original_files) != 1:
+        return None
+
+    return original_files[0], mask_files[0]
+
+
+def is_saved_session_directory(directory: Path) -> bool:
+    return _get_session_image_files(directory) is not None
+
+
+def load_saved_session(root: Path, relative_path: str) -> dict:
+    session_dir = resolve_relative_directory(root, relative_path)
+    session_files = _get_session_image_files(session_dir)
+    if session_files is None:
+        raise HTTPException(status_code=404, detail="Saved session not found")
+
+    original_image, mask_image = session_files
+    prompt_payload = None
+    prompt_file = session_dir / "prompt.json"
+    if prompt_file.exists():
+        try:
+            prompt_payload = json.loads(prompt_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=500, detail="Saved session prompt metadata is invalid") from exc
+
+        if not isinstance(prompt_payload, dict):
+            raise HTTPException(status_code=500, detail="Saved session prompt metadata is invalid")
+
+    return {
+        "name": session_dir.name,
+        "path": str(session_dir.relative_to(root)),
+        "original_image_name": original_image.name,
+        "original_image_path": str(original_image.relative_to(root)),
+        "mask_image_name": mask_image.name,
+        "mask_image_path": str(mask_image.relative_to(root)),
+        "prompt_metadata": prompt_payload,
+    }
+
 
 def build_folder_tree(root: Path) -> list[dict]:
     def build_node(directory: Path) -> dict:
@@ -195,21 +246,11 @@ def build_folder_tree(root: Path) -> list[dict]:
             [child for child in directory.iterdir() if child.is_dir()],
             key=lambda child: child.name.lower(),
         )
-        files = sorted(
-            [child for child in directory.iterdir() if child.is_file()],
-            key=lambda child: child.name.lower(),
-        )
         return {
             "name": directory.name,
             "path": str(directory.relative_to(root)),
+            "is_session": is_saved_session_directory(directory),
             "children": [build_node(child) for child in child_directories],
-            "files": [
-                {
-                    "name": child.name,
-                    "path": str(child.relative_to(root)),
-                }
-                for child in files
-            ],
         }
 
     return [build_node(child) for child in sorted(root.iterdir(), key=lambda item: item.name.lower()) if child.is_dir()]
