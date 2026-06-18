@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
-import { copyItem, createFolder, deleteFolder, fetchFolderTree, buildFileContentUrl, renameItem } from '../lib/api/client'
-import { ImageModal } from './ImageModal'
-import type { CopiedStorageItem, FolderFile, FolderNode, StorageItemKind, StorageScope } from '../lib/api/types'
+import { copyItem, createFolder, deleteFolder, fetchFolderTree, loadSavedSession, renameItem } from '../lib/api/client'
+import type { CopiedStorageItem, FolderNode, StorageScope } from '../lib/api/types'
 import { useSessionStore } from '../lib/store/session'
 
 const MIN_WIDTH = 220
@@ -21,12 +20,11 @@ type PendingDeleteConfirm = {
 type SelectedEntry = {
   scope: StorageScope
   path: string
-  kind: StorageItemKind
+  isSession: boolean
 }
 type PendingRename = {
   scope: StorageScope
   path: string
-  kind: StorageItemKind
 }
 type PendingPasteConflict = {
   item: CopiedStorageItem
@@ -38,8 +36,8 @@ type FolderTreeProps = {
   nodes: FolderNode[]
   scope: StorageScope
   selectedEntry: SelectedEntry | null
-  onFolderSelect: (scope: StorageScope, path: string) => void
-  onFileSelect: (scope: StorageScope, file: FolderFile) => void
+  onFolderSelect: (scope: StorageScope, path: string, isSession: boolean) => void
+  onSessionOpen: (scope: StorageScope, path: string) => void
   pendingDraft: PendingFolderDraft | null
   draftName: string
   onDraftNameChange: (value: string) => void
@@ -50,7 +48,6 @@ type FolderTreeProps = {
   onRenameNameChange: (value: string) => void
   onRenameSubmit: () => void
   onRenameCancel: () => void
-  onFileOpen: (scope: StorageScope, file: FolderFile) => void
   depth?: number
 }
 
@@ -100,24 +97,12 @@ function TrashIcon() {
   )
 }
 
-function FileIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" fill="currentColor">
-      <path d="M6.75 3.75A2.25 2.25 0 0 0 4.5 6v12A2.25 2.25 0 0 0 6.75 20.25h10.5A2.25 2.25 0 0 0 19.5 18V8.56a2.25 2.25 0 0 0-.659-1.591l-2.81-2.81A2.25 2.25 0 0 0 14.44 3.5H6.75Z" />
-    </svg>
-  )
-}
-
-function isPreviewableImage(filename: string) {
-  return /\.(png|jpe?g|webp|gif|bmp)$/i.test(filename)
-}
-
 function FolderTree({
   nodes,
   scope,
   selectedEntry,
   onFolderSelect,
-  onFileSelect,
+  onSessionOpen,
   pendingDraft,
   draftName,
   onDraftNameChange,
@@ -128,83 +113,8 @@ function FolderTree({
   onRenameNameChange,
   onRenameSubmit,
   onRenameCancel,
-  onFileOpen,
   depth = 0,
 }: FolderTreeProps) {
-  const renderFiles = (files: FolderFile[], rowDepth: number) => {
-    if (files.length === 0) {
-      return null
-    }
-
-    return (
-      <div className="space-y-1">
-        {files.map((file) => {
-          const isPreviewable = isPreviewableImage(file.name)
-          const isSelected = selectedEntry?.scope === scope && selectedEntry.path === file.path && selectedEntry.kind === 'file'
-          const isRenaming = pendingRename?.scope === scope && pendingRename.path === file.path && pendingRename.kind === 'file'
-
-          if (isRenaming) {
-            return (
-              <div className="py-1" key={`${scope}:rename:file:${file.path}`}>
-                <div
-                  className="flex items-center rounded-lg border border-slate-300 bg-white px-2 py-1.5"
-                  style={{ paddingLeft: `${rowDepth * 14 + 8}px` }}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <FileIcon />
-                  <input
-                    autoFocus
-                    value={renameName}
-                    onChange={(event) => onRenameNameChange(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault()
-                        onRenameSubmit()
-                      } else if (event.key === 'Escape') {
-                        event.preventDefault()
-                        onRenameCancel()
-                      }
-                    }}
-                    onBlur={onRenameCancel}
-                    placeholder="File name"
-                    className="ml-2 w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
-                  />
-                </div>
-              </div>
-            )
-          }
-
-          return (
-            <button
-              type="button"
-              key={`${scope}:file:${file.path}`}
-              onClick={(event) => {
-                event.stopPropagation()
-                onFileSelect(scope, file)
-              }}
-              onDoubleClick={(event) => {
-                event.stopPropagation()
-                if (isPreviewable) {
-                  onFileOpen(scope, file)
-                }
-              }}
-              className={`flex w-full items-center rounded-lg px-2 py-1.5 text-left text-sm transition ${isSelected
-                  ? 'bg-slate-900 text-white'
-                  : isPreviewable
-                    ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
-                    : 'text-slate-400 hover:bg-slate-100'
-                }`}
-              style={{ paddingLeft: `${rowDepth * 14 + 8}px` }}
-            >
-              <FileIcon />
-              <span className="ml-2 truncate">{file.name}</span>
-            </button>
-          )
-        })}
-      </div>
-    )
-  }
-
   const renderDraftRow = (parentPath: string | null, rowDepth: number) => {
     if (!pendingDraft || pendingDraft.scope !== scope || pendingDraft.parentPath !== parentPath) {
       return null
@@ -244,11 +154,8 @@ function FolderTree({
     <div className="space-y-1">
       {renderDraftRow(null, depth)}
       {nodes.map((node) => {
-        const isSelected = selectedEntry?.scope === scope && selectedEntry.path === node.path && selectedEntry.kind === 'folder'
-        const hasSelectedFile = selectedEntry?.scope === scope
-          && selectedEntry.kind === 'file'
-          && selectedEntry.path.startsWith(`${node.path}/`)
-        const isRenaming = pendingRename?.scope === scope && pendingRename.path === node.path && pendingRename.kind === 'folder'
+        const isSelected = selectedEntry?.scope === scope && selectedEntry.path === node.path
+        const isRenaming = pendingRename?.scope === scope && pendingRename.path === node.path
         return (
           <div key={`${scope}:${node.path}`}>
             {isRenaming ? (
@@ -283,7 +190,13 @@ function FolderTree({
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation()
-                  onFolderSelect(scope, node.path)
+                  onFolderSelect(scope, node.path, node.is_session)
+                }}
+                onDoubleClick={(event) => {
+                  event.stopPropagation()
+                  if (node.is_session) {
+                    onSessionOpen(scope, node.path)
+                  }
                 }}
                 className={`flex w-full items-center rounded-lg px-2 py-1.5 text-left text-sm transition ${isSelected ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
                   }`}
@@ -299,7 +212,7 @@ function FolderTree({
                 scope={scope}
                 selectedEntry={selectedEntry}
                 onFolderSelect={onFolderSelect}
-                onFileSelect={onFileSelect}
+                onSessionOpen={onSessionOpen}
                 pendingDraft={pendingDraft}
                 draftName={draftName}
                 onDraftNameChange={onDraftNameChange}
@@ -310,11 +223,9 @@ function FolderTree({
                 onRenameNameChange={onRenameNameChange}
                 onRenameSubmit={onRenameSubmit}
                 onRenameCancel={onRenameCancel}
-                onFileOpen={onFileOpen}
                 depth={depth + 1}
               />
             )}
-            {(isSelected || hasSelectedFile) && renderFiles(node.files, depth + 1)}
             {renderDraftRow(node.path, depth + 1)}
           </div>
         )
@@ -324,6 +235,7 @@ function FolderTree({
 }
 
 export function Sidebar() {
+  const restoreSavedSession = useSessionStore((s) => s.loadSavedSession)
   const setSelectedSaveTarget = useSessionStore((s) => s.setSelectedSaveTarget)
   const folderTreeVersion = useSessionStore((s) => s.folderTreeVersion)
   const bumpFolderTreeVersion = useSessionStore((s) => s.bumpFolderTreeVersion)
@@ -341,7 +253,6 @@ export function Sidebar() {
   const [pasteRenameName, setPasteRenameName] = useState('')
   const [draftName, setDraftName] = useState('')
   const [renameName, setRenameName] = useState('')
-  const [previewFile, setPreviewFile] = useState<{ src: string; name: string } | null>(null)
   const dragModeRef = useRef<DragMode>(null)
   const startXRef = useRef(0)
   const startWidthRef = useRef(width)
@@ -477,7 +388,7 @@ export function Sidebar() {
   }, [bumpFolderTreeVersion, cancelFolderDraft, draftName, pendingDraft, setSelectedSaveTarget])
 
   const requestDeleteSelectedFolder = (scope: StorageScope) => {
-    if (!selectedEntry || selectedEntry.scope !== scope || selectedEntry.kind !== 'folder') return
+    if (!selectedEntry || selectedEntry.scope !== scope) return
     setPendingDelete({ scope, path: selectedEntry.path })
   }
 
@@ -487,7 +398,6 @@ export function Sidebar() {
     setPendingRename({
       scope,
       path: selectedEntry.path,
-      kind: selectedEntry.kind,
     })
     setRenameName(currentName)
     setFolderError(null)
@@ -503,13 +413,13 @@ export function Sidebar() {
     }
 
     try {
-      const renamed = await renameItem(pendingRename.scope, pendingRename.path, nextName, pendingRename.kind)
+      const renamed = await renameItem(pendingRename.scope, pendingRename.path, nextName, 'folder')
       setSelectedEntry({
         scope: renamed.scope,
         path: renamed.path,
-        kind: renamed.kind,
+        isSession: selectedEntry?.isSession ?? false,
       })
-      if (renamed.kind === 'folder') {
+      if (!selectedEntry?.isSession) {
         setSelectedSaveTarget(renamed.scope, renamed.path)
       }
       bumpFolderTreeVersion()
@@ -518,7 +428,7 @@ export function Sidebar() {
     } catch (error) {
       setFolderError(error instanceof Error ? error.message : 'Failed to rename item')
     }
-  }, [bumpFolderTreeVersion, cancelRename, pendingRename, renameName, setSelectedSaveTarget])
+  }, [bumpFolderTreeVersion, cancelRename, pendingRename, renameName, selectedEntry?.isSession, setSelectedSaveTarget])
 
   const performPaste = useCallback(async (
     item: CopiedStorageItem,
@@ -532,9 +442,9 @@ export function Sidebar() {
       setSelectedEntry({
         scope: copied.scope,
         path: copied.path,
-        kind: copied.kind,
+        isSession: item.isSession ?? false,
       })
-      if (copied.kind === 'folder') {
+      if (!item.isSession) {
         setSelectedSaveTarget(copied.scope, copied.path)
       }
       setFolderError(null)
@@ -571,11 +481,11 @@ export function Sidebar() {
   }
 
   const renderSelectionActions = (scope: StorageScope) => {
-    const hasSelectedFolder = selectedEntry?.scope === scope && selectedEntry.kind === 'folder'
+    const hasSelectedFolder = selectedEntry?.scope === scope
     const hasSelectedItem = selectedEntry?.scope === scope
     const pasteSourceMatchesScope = copiedItem?.sourceScope === scope
     const showPaste = !!copiedItem && !pasteSourceMatchesScope
-    const destinationParentPath = hasSelectedFolder && selectedEntry ? selectedEntry.path : null
+    const destinationParentPath = hasSelectedFolder && selectedEntry && !selectedEntry.isSession ? selectedEntry.path : null
 
     return (
       <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
@@ -590,7 +500,7 @@ export function Sidebar() {
           >
             New folder
           </button>
-          {hasSelectedFolder && selectedEntry && (
+          {hasSelectedFolder && selectedEntry && !selectedEntry.isSession && (
             <>
               <button
                 type="button"
@@ -614,8 +524,9 @@ export function Sidebar() {
                   setCopiedItem({
                     sourceScope: selectedEntry.scope,
                     path: selectedEntry.path,
-                    kind: selectedEntry.kind,
+                    kind: 'folder',
                     name: selectedEntry.path.split('/').pop() ?? selectedEntry.path,
+                    isSession: selectedEntry.isSession,
                   })
                   setFolderError(null)
                 }}
@@ -682,21 +593,31 @@ export function Sidebar() {
     )
   }
 
-  const handleFileOpen = (scope: StorageScope, file: FolderFile) => {
-    setPreviewFile({
-      src: buildFileContentUrl(scope, file.path),
-      name: file.name,
-    })
+  const handleFolderSelect = (scope: StorageScope, path: string, isSession: boolean) => {
+    setSelectedEntry({ scope, path, isSession })
+    if (!isSession) {
+      setSelectedSaveTarget(scope, path)
+    }
   }
 
-  const handleFolderSelect = (scope: StorageScope, path: string) => {
-    setSelectedEntry({ scope, path, kind: 'folder' })
-    setSelectedSaveTarget(scope, path)
-  }
-
-  const handleFileSelect = (scope: StorageScope, file: FolderFile) => {
-    setSelectedEntry({ scope, path: file.path, kind: 'file' })
-  }
+  const handleSessionOpen = useCallback(async (scope: StorageScope, path: string) => {
+    try {
+      const session = await loadSavedSession(scope, path)
+      const promptMetadata = session.prompt_metadata
+      restoreSavedSession({
+        file: session.originalFile,
+        maskUrl: session.maskUrl,
+        model: promptMetadata?.model ?? 'sam',
+        promptMode: promptMetadata?.prompt_mode ?? 'box',
+        preprocessingMode: promptMetadata?.preprocessing_mode ?? 'none',
+        boundingBox: promptMetadata?.bounding_box ?? null,
+        promptPoints: promptMetadata?.prompt_points ?? [],
+      })
+      setFolderError(null)
+    } catch (error) {
+      setFolderError(error instanceof Error ? error.message : 'Failed to open saved session')
+    }
+  }, [restoreSavedSession])
 
   return (
     <aside
@@ -722,7 +643,7 @@ export function Sidebar() {
           className="flex min-h-0 flex-col"
           style={{ flexBasis: `${splitRatio * 100}%`, flexGrow: 0, flexShrink: 0 }}
         >
-          {renderSectionHeader('Shared folders')}
+          {renderSectionHeader('Shared sessions')}
           {renderSelectionActions('shared')}
           <div className="mt-3 flex-1 overflow-auto rounded-lg border border-dashed border-slate-300 bg-white/70 p-3">
             <FolderTree
@@ -730,7 +651,7 @@ export function Sidebar() {
               scope="shared"
               selectedEntry={selectedEntry}
               onFolderSelect={handleFolderSelect}
-              onFileSelect={handleFileSelect}
+              onSessionOpen={handleSessionOpen}
               pendingDraft={pendingDraft}
               draftName={draftName}
               onDraftNameChange={setDraftName}
@@ -741,7 +662,6 @@ export function Sidebar() {
               onRenameNameChange={setRenameName}
               onRenameSubmit={() => void submitRename()}
               onRenameCancel={cancelRename}
-              onFileOpen={handleFileOpen}
             />
           </div>
         </section>
@@ -760,7 +680,7 @@ export function Sidebar() {
           className="flex min-h-0 flex-1 flex-col"
           style={{ flexBasis: `${(1 - splitRatio) * 100}%` }}
         >
-          {renderSectionHeader('Private folders')}
+          {renderSectionHeader('Private sessions')}
           {renderSelectionActions('private')}
           <div className="mt-3 flex-1 overflow-auto rounded-lg border border-dashed border-slate-300 bg-white/70 p-3">
             <FolderTree
@@ -768,7 +688,7 @@ export function Sidebar() {
               scope="private"
               selectedEntry={selectedEntry}
               onFolderSelect={handleFolderSelect}
-              onFileSelect={handleFileSelect}
+              onSessionOpen={handleSessionOpen}
               pendingDraft={pendingDraft}
               draftName={draftName}
               onDraftNameChange={setDraftName}
@@ -779,7 +699,6 @@ export function Sidebar() {
               onRenameNameChange={setRenameName}
               onRenameSubmit={() => void submitRename()}
               onRenameCancel={cancelRename}
-              onFileOpen={handleFileOpen}
             />
           </div>
         </section>
@@ -896,13 +815,6 @@ export function Sidebar() {
         </div>
       )}
 
-      {previewFile && (
-        <ImageModal
-          src={previewFile.src}
-          alt={previewFile.name}
-          onClose={() => setPreviewFile(null)}
-        />
-      )}
     </aside>
   )
 }
