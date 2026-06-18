@@ -9,11 +9,11 @@ from backend.database import get_db
 from backend.routes.auth_routes import get_current_user
 from backend.services.storage_service import (
     build_folder_tree,
-    build_session_folder,
     copy_relative_item,
     get_private_root,
     get_shared_root,
     load_saved_session,
+    prepare_session_folder,
     rename_relative_item,
     resolve_relative_directory,
     resolve_relative_file,
@@ -138,11 +138,18 @@ async def save_session(
     scope: str = Form("private"),
     parent_path: str = Form(""),
     prompt_metadata: str | None = Form(default=None),
+    session_name: str | None = Form(default=None),
+    replace: bool = Form(False),
     user: dict = Depends(get_current_user),
 ):
     root = get_scope_root(user, scope)
     parent = resolve_relative_directory(root, parent_path or None)
-    session_dir, original_filename, mask_filename = build_session_folder(parent, original_image.filename or "image.png")
+    session_dir, original_filename, mask_filename = prepare_session_folder(
+        parent,
+        original_image.filename or "image.png",
+        session_name=session_name,
+        replace=replace,
+    )
 
     original_bytes = await original_image.read()
     mask_bytes = await mask_image.read()

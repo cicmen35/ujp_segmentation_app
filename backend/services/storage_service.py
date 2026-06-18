@@ -260,18 +260,38 @@ def build_session_folder(parent: Path, image_filename: str) -> tuple[Path, str, 
     original_filename = sanitize_filename(image_filename)
     image_path = Path(original_filename)
     stem = sanitize_session_stem(image_path.stem)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    session_name = f"{stem}_{timestamp}"
-    session_dir = parent / session_name
+    mask_filename = f"{stem}_mask.png"
+    return parent / f"{stem}_{datetime.now().strftime('%Y%m%d_%H%M%S')}", original_filename, mask_filename
 
-    suffix = 1
-    while session_dir.exists():
-        session_name = f"{stem}_{timestamp}_{suffix}"
-        session_dir = parent / session_name
-        suffix += 1
+
+def prepare_session_folder(
+    parent: Path,
+    image_filename: str,
+    *,
+    session_name: str | None = None,
+    replace: bool = False,
+) -> tuple[Path, str, str]:
+    session_dir, original_filename, mask_filename = build_session_folder(parent, image_filename)
+    if session_name:
+        session_dir = parent / sanitize_folder_name(session_name)
+
+    if session_dir.exists():
+        if not replace:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "session_exists",
+                    "message": "Session already exists",
+                    "session_name": session_dir.name,
+                },
+            )
+
+        if not session_dir.is_dir():
+            raise HTTPException(status_code=409, detail="A file with the same name already exists")
+
+        rmtree(session_dir)
 
     session_dir.mkdir(parents=True, exist_ok=False)
-    mask_filename = f"{stem}_mask.png"
     return session_dir, original_filename, mask_filename
 
 
