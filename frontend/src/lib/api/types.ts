@@ -23,11 +23,6 @@ export type PromptPoint = {
 };
 export type BoundingBox = [number, number, number, number];
 
-export type FolderFile = {
-  name: string;
-  path: string;
-};
-
 export type StorageItemKind = "folder" | "file";
 
 export type CopiedStorageItem = {
@@ -35,13 +30,14 @@ export type CopiedStorageItem = {
   path: string;
   kind: StorageItemKind;
   name: string;
+  isSession?: boolean;
 };
 
 export type FolderNode = {
   name: string;
   path: string;
+  is_session: boolean;
   children: FolderNode[];
-  files: FolderFile[];
 };
 
 export type FolderTreeResponse = {
@@ -55,6 +51,17 @@ export type SaveSessionResponse = {
   path: string;
   original_image: string;
   mask_image: string;
+};
+
+export type SavedSessionResponse = {
+  scope: StorageScope;
+  name: string;
+  path: string;
+  original_image_name: string;
+  original_image_path: string;
+  mask_image_name: string;
+  mask_image_path: string;
+  prompt_metadata: SaveSessionPromptMetadata | null;
 };
 
 export type PromptPreset = {

@@ -4,6 +4,7 @@ import type {
   FolderTreeResponse,
   PromptPreset,
   SaveSessionPromptMetadata,
+  SavedSessionResponse,
   SamPreprocessingMode,
   SaveSessionResponse,
   StorageItemKind,
@@ -116,6 +117,18 @@ export function buildFileContentUrl(scope: StorageScope, path: string) {
   return `${API}/files/content?${params.toString()}`;
 }
 
+async function fetchProtectedBlob(scope: StorageScope, path: string) {
+  const response = await fetch(buildFileContentUrl(scope, path), {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(await readError(response));
+  }
+
+  return response.blob();
+}
+
 export function createFolder(scope: StorageScope, name: string, parentPath: string | null) {
   return fetchJson<{ name: string; path: string; scope: StorageScope }>("/files/folders", {
     method: "POST",
@@ -201,6 +214,23 @@ export async function saveSession(
   }
 
   return response.json() as Promise<SaveSessionResponse>;
+}
+
+export async function loadSavedSession(scope: StorageScope, path: string) {
+  const params = new URLSearchParams({ scope, path });
+  const session = await fetchJson<SavedSessionResponse>(`/files/session?${params.toString()}`);
+  const [originalBlob, maskBlob] = await Promise.all([
+    fetchProtectedBlob(scope, session.original_image_path),
+    fetchProtectedBlob(scope, session.mask_image_path),
+  ]);
+
+  return {
+    ...session,
+    originalFile: new File([originalBlob], session.original_image_name, {
+      type: originalBlob.type || "application/octet-stream",
+    }),
+    maskUrl: URL.createObjectURL(maskBlob),
+  };
 }
 
 export async function samSegment(

@@ -9,6 +9,16 @@ import type {
   UserRole,
 } from "../api/types";
 
+type RestoredSessionState = {
+  file: File;
+  maskUrl: string | null;
+  model: SegmentationModel;
+  promptMode: PromptMode;
+  preprocessingMode: SamPreprocessingMode;
+  boundingBox: BoundingBox | null;
+  promptPoints: PromptPoint[];
+};
+
 type SessionState = {
   // data
   file: File | null;
@@ -45,6 +55,7 @@ type SessionState = {
   clearAuth: () => void;
   setSelectedSaveTarget: (scope: StorageScope | null, path: string | null) => void;
   bumpFolderTreeVersion: () => void;
+  loadSavedSession: (session: RestoredSessionState) => void;
 
   // utils
   clear: () => void;
@@ -95,6 +106,22 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   clearAuth: () => set({ isLoggedIn: false, currentUser: null, role: null, selectedSaveScope: null, selectedSavePath: null }),
   setSelectedSaveTarget: (scope, path) => set({ selectedSaveScope: scope, selectedSavePath: path }),
   bumpFolderTreeVersion: () => set((state) => ({ folderTreeVersion: state.folderTreeVersion + 1 })),
+  loadSavedSession: (session) => {
+    const { imageUrl, maskUrl } = get();
+    if (imageUrl) URL.revokeObjectURL(imageUrl);
+    if (maskUrl) URL.revokeObjectURL(maskUrl);
+
+    set({
+      file: session.file,
+      imageUrl: URL.createObjectURL(session.file),
+      maskUrl: session.maskUrl,
+      model: session.model,
+      promptMode: session.promptMode,
+      preprocessingMode: session.preprocessingMode,
+      boundingBox: session.boundingBox,
+      promptPoints: session.promptPoints,
+    });
+  },
 
   clear: () => {
     const { imageUrl, maskUrl } = get();
