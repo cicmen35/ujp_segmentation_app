@@ -15,6 +15,16 @@ import type {
 const API = import.meta.env.VITE_API_BASE_URL || "/api";
 const ENABLE_DEV_AUTH_BYPASS = import.meta.env.VITE_ENABLE_DEV_AUTH_BYPASS === "true";
 
+export class SessionSaveConflictError extends Error {
+  sessionName: string;
+
+  constructor(sessionName: string, message = "Session already exists") {
+    super(message);
+    this.name = "SessionSaveConflictError";
+    this.sessionName = sessionName;
+  }
+}
+
 async function readError(response: Response) {
   const text = await response.text();
   if (!text) {
@@ -192,6 +202,7 @@ export async function saveSession(
   scope: StorageScope,
   parentPath: string | null,
   promptMetadata?: SaveSessionPromptMetadata,
+  options?: { sessionName?: string; replace?: boolean },
 ) {
   const originalStem = originalImage.name.replace(/\.[^.]+$/, "") || "image";
   const formData = new FormData();
@@ -199,6 +210,12 @@ export async function saveSession(
   formData.append("mask_image", new File([maskBlob], `${originalStem}_mask.png`, { type: "image/png" }));
   formData.append("scope", scope);
   formData.append("parent_path", parentPath ?? "");
+  if (options?.sessionName) {
+    formData.append("session_name", options.sessionName);
+  }
+  if (options?.replace) {
+    formData.append("replace", "true");
+  }
   if (promptMetadata) {
     formData.append("prompt_metadata", JSON.stringify(promptMetadata));
   }
@@ -210,6 +227,23 @@ export async function saveSession(
   });
 
   if (!response.ok) {
+    if (response.status === 409) {
+      const text = await response.text();
+      if (text) {
+        try {
+          const data = JSON.parse(text);
+          const detail = data?.detail;
+          if (detail?.code === "session_exists" && typeof detail?.session_name === "string") {
+            throw new SessionSaveConflictError(detail.session_name, detail.message);
+          }
+        } catch (error) {
+          if (error instanceof SessionSaveConflictError) {
+            throw error;
+          }
+        }
+      }
+    }
+
     throw new Error(await readError(response));
   }
 
