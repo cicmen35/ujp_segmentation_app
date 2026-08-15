@@ -13,7 +13,10 @@ import type {
 } from "./types";
 
 const API = import.meta.env.VITE_API_BASE_URL || "/api";
-const ENABLE_DEV_AUTH_BYPASS = import.meta.env.VITE_ENABLE_DEV_AUTH_BYPASS === "true";
+// DEV-only: when true, falls back to an unauthenticated dev endpoint.
+// import.meta.env.DEV is replaced with `false` by Vite at production build time,
+// so the entire bypass branch is dead-code-eliminated before shipping.
+const ENABLE_DEV_AUTH_BYPASS = import.meta.env.DEV;
 
 export class SessionSaveConflictError extends Error {
   sessionName: string;
