@@ -10,6 +10,7 @@ export function SegmentPanel() {
   const promptPoints = useSessionStore((s) => s.promptPoints);
   const setMaskUrl = useSessionStore((s) => s.setMaskUrl);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Determine if we have enough prompt data
   const hasBox = !!boundingBox;
@@ -24,6 +25,7 @@ export function SegmentPanel() {
   const onSegment = async () => {
     if (!file || !canSegment) return;
     setLoading(true);
+    setError(null);
     try {
       // Build prompt based on mode
       const prompt: Record<string, unknown> = { multimask: true };
@@ -39,18 +41,28 @@ export function SegmentPanel() {
 
       const maskUrl = await samSegment(file, prompt, preprocessingMode);
       setMaskUrl(maskUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Segmentation failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <button
-      onClick={onSegment}
-      disabled={!canSegment || loading}
-      className="rounded-2xl bg-slate-900 px-4 py-2 text-white disabled:opacity-50"
-    >
-      {loading ? "Segmenting..." : "Segment image"}
-    </button>
+    <div className="flex flex-col items-start gap-2">
+      <button
+        type="button"
+        onClick={onSegment}
+        disabled={!canSegment || loading}
+        className="rounded-2xl bg-slate-900 px-4 py-2 text-white disabled:opacity-50"
+      >
+        {loading ? "Segmenting..." : "Segment image"}
+      </button>
+      {error && (
+        <p role="alert" className="text-xs text-red-600">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
