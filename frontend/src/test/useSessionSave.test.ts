@@ -37,7 +37,7 @@ function makeMaskBlob() {
 }
 
 /** Seed the session store with the minimum state needed for a save */
-function seedStore(overrides: Partial<Parameters<typeof useSessionStore.getState>[0]> = {}) {
+function seedStore(overrides: Record<string, unknown> = {}) {
   const store = useSessionStore.getState()
   store.setFile(makeFile())
   // maskUrl cannot be set via store action while mocking fetch; set directly
