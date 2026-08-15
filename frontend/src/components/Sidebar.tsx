@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import { copyItem, createFolder, deleteFolder, fetchFolderTree, loadSavedSession, renameItem } from '../lib/api/client'
 import type { CopiedStorageItem, FolderNode, StorageScope } from '../lib/api/types'
@@ -262,6 +262,8 @@ type SidebarProps = {
 }
 
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
+  const deleteTitleId = useId()
+  const pasteTitleId = useId()
   const restoreSavedSession = useSessionStore((s) => s.loadSavedSession)
   const setSelectedSaveTarget = useSessionStore((s) => s.setSelectedSaveTarget)
   const folderTreeVersion = useSessionStore((s) => s.folderTreeVersion)
@@ -776,10 +778,13 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
           onClick={() => setPendingDelete(null)}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={deleteTitleId}
             className="w-full max-w-xs rounded-xl border border-slate-200 bg-white p-4 shadow-xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <p className="text-sm font-semibold text-slate-900">Delete folder?</p>
+            <p id={deleteTitleId} className="text-sm font-semibold text-slate-900">Delete folder?</p>
             <p className="mt-2 text-sm text-slate-600">
               Delete <span className="font-medium text-slate-800">{pendingDelete.path}</span> and all of its contents?
             </p>
@@ -812,10 +817,13 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
           }}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={pasteTitleId}
             className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-4 shadow-xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <p className="text-sm font-semibold text-slate-900">Item already exists</p>
+            <p id={pasteTitleId} className="text-sm font-semibold text-slate-900">Item already exists</p>
             <p className="mt-2 text-sm text-slate-600">
               <span className="font-medium text-slate-800">{pendingPasteConflict.item.name}</span> already exists in the destination.
             </p>

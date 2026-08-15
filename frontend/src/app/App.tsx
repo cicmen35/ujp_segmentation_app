@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 
 import { Header } from '../components/Header'
 import { Sidebar } from '../components/Sidebar'
@@ -18,6 +18,7 @@ type Toast = {
 }
 
 export function App() {
+  const saveConflictTitleId = useId()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const clear = useSessionStore((state) => state.clear)
   const maskUrl = useSessionStore((state) => state.maskUrl)
@@ -130,10 +131,13 @@ export function App() {
           onClick={clearSaveConflict}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={saveConflictTitleId}
             className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-4 shadow-xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <p className="text-sm font-semibold text-slate-900">Session already exists</p>
+            <p id={saveConflictTitleId} className="text-sm font-semibold text-slate-900">Session already exists</p>
             <p className="mt-2 text-sm text-slate-600">
               A session named <span className="font-medium text-slate-800">{saveConflictName}</span> already exists in the destination.
             </p>

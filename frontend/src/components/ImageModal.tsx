@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState } from 'react'
+import { useEffect, useCallback, useRef, useState, useId } from 'react'
 import type { BoundingBox, PromptPoint } from '../lib/api/types'
 
 type Props = {
@@ -49,7 +49,20 @@ export function ImageModal({
     onUndoPrompt,
 }: Props) {
     const backdropRef = useRef<HTMLDivElement>(null)
+    const dialogRef = useRef<HTMLDivElement>(null)
     const imgRef = useRef<HTMLImageElement>(null)
+    const titleId = useId()
+
+    // Restore focus to the element that triggered the modal on close
+    const previousFocusRef = useRef<HTMLElement | null>(null)
+    useEffect(() => {
+        previousFocusRef.current = document.activeElement as HTMLElement | null
+        // Move initial focus into the dialog container
+        dialogRef.current?.focus()
+        return () => {
+            previousFocusRef.current?.focus()
+        }
+    }, [])
 
     // Zoom
     const [scale, setScale] = useState(1)
@@ -73,7 +86,7 @@ export function ImageModal({
         setPoints(initialPoints)
     }, [initialPoints])
 
-    // Close on Escape
+    // Close on Escape / undo on Backspace
     const handleKeyDown = useCallback(
         (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
@@ -118,6 +131,26 @@ export function ImageModal({
             document.body.style.overflow = ''
         }
     }, [handleKeyDown])
+
+    // Focus trap: cycle Tab/Shift+Tab inside the dialog
+    const handleFocusTrap = useCallback((e: React.KeyboardEvent) => {
+        if (e.key !== 'Tab' || !dialogRef.current) return
+        const focusable = Array.from(
+            dialogRef.current.querySelectorAll<HTMLElement>(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            )
+        ).filter((el) => !el.hasAttribute('disabled'))
+        if (focusable.length === 0) return
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault()
+            last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault()
+            first.focus()
+        }
+    }, [])
 
     const handleBackdropClick = (e: React.MouseEvent) => {
         if (e.target === backdropRef.current) onClose()
@@ -233,111 +266,127 @@ export function ImageModal({
             onClick={handleBackdropClick}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
         >
-            {/* Close button */}
-            <button
-                type="button"
-                onClick={onClose}
-                className="absolute right-5 top-5 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/80 transition hover:bg-white/20 hover:text-white"
-                aria-label="Close"
-            >
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
-                    <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-            </button>
-
-            {/* Hint bar */}
-            <div className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-4 py-1.5 text-xs text-white/60">
-                {hints.join(' · ')}
-            </div>
-
-            {/* Image container */}
+            {/* Accessible dialog container */}
             <div
-                className={isInteractive ? 'cursor-crosshair' : 'cursor-default'}
-                onWheel={handleWheel}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-                onDoubleClick={handleDoubleClick}
-                style={{ userSelect: 'none' }}
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                tabIndex={-1}
+                onKeyDown={handleFocusTrap}
+                className="relative flex items-center justify-center outline-none"
             >
-                <div
-                    style={{
-                        position: 'relative',
-                        display: 'inline-block',
-                        transform: `scale(${scale})`,
-                        transition: 'transform 75ms',
-                    }}
+                {/* Visually hidden title for screen readers */}
+                <span id={titleId} className="sr-only">
+                    {alt} — Image viewer
+                </span>
+
+                {/* Close button */}
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="absolute right-5 top-5 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/80 transition hover:bg-white/20 hover:text-white"
+                    aria-label="Close image viewer"
                 >
-                    <img
-                        ref={imgRef}
-                        src={src}
-                        alt={alt}
-                        draggable={false}
-                        onLoad={(event) => {
-                            const img = event.currentTarget
-                            setImageSize({
-                                width: img.naturalWidth,
-                                height: img.naturalHeight,
-                            })
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </button>
+
+                {/* Hint bar */}
+                <div className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-4 py-1.5 text-xs text-white/60">
+                    {hints.join(' · ')}
+                </div>
+
+                {/* Image container */}
+                <div
+                    className={isInteractive ? 'cursor-crosshair' : 'cursor-default'}
+                    onWheel={handleWheel}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                    onDoubleClick={handleDoubleClick}
+                    style={{ userSelect: 'none' }}
+                >
+                    <div
+                        style={{
+                            position: 'relative',
+                            display: 'inline-block',
+                            transform: `scale(${scale})`,
+                            transition: 'transform 75ms',
                         }}
-                        className="block max-h-[85vh] max-w-[85vw] rounded-xl shadow-2xl"
-                    />
-
-                    {/* SVG overlay for box + points */}
-                    {imageSize && (activeBox || points.length > 0) && (
-                        <svg
-                            style={{
-                                position: 'absolute',
-                                inset: 0,
-                                width: '100%',
-                                height: '100%',
-                                pointerEvents: 'none',
+                    >
+                        <img
+                            ref={imgRef}
+                            src={src}
+                            alt={alt}
+                            draggable={false}
+                            onLoad={(event) => {
+                                const img = event.currentTarget
+                                setImageSize({
+                                    width: img.naturalWidth,
+                                    height: img.naturalHeight,
+                                })
                             }}
-                            viewBox={`0 0 ${imageSize.width} ${imageSize.height}`}
-                            preserveAspectRatio="none"
-                        >
-                            {/* Bounding box */}
-                            {activeBox && (
-                                <rect
-                                    x={activeBox[0]}
-                                    y={activeBox[1]}
-                                    width={activeBox[2] - activeBox[0]}
-                                    height={activeBox[3] - activeBox[1]}
-                                    fill="rgba(59, 130, 246, 0.15)"
-                                    stroke="rgb(59, 130, 246)"
-                                    strokeWidth={Math.max(2, 2 / scale)}
-                                />
-                            )}
+                            className="block max-h-[85vh] max-w-[85vw] rounded-xl shadow-2xl"
+                        />
 
-                            {/* Points */}
-                            {points.map((pt, i) => (
-                                <g key={i}>
-                                    <circle
-                                        cx={pt.x}
-                                        cy={pt.y}
-                                        r={pointRadius}
-                                        fill={pt.label === 1 ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)'}
-                                        stroke="white"
-                                        strokeWidth={Math.max(2, pointRadius * 0.3)}
+                        {/* SVG overlay for box + points */}
+                        {imageSize && (activeBox || points.length > 0) && (
+                            <svg
+                                style={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    pointerEvents: 'none',
+                                }}
+                                viewBox={`0 0 ${imageSize.width} ${imageSize.height}`}
+                                preserveAspectRatio="none"
+                            >
+                                {/* Bounding box */}
+                                {activeBox && (
+                                    <rect
+                                        x={activeBox[0]}
+                                        y={activeBox[1]}
+                                        width={activeBox[2] - activeBox[0]}
+                                        height={activeBox[3] - activeBox[1]}
+                                        fill="rgba(59, 130, 246, 0.15)"
+                                        stroke="rgb(59, 130, 246)"
+                                        strokeWidth={Math.max(2, 2 / scale)}
                                     />
-                                    {/* Plus or minus icon inside */}
-                                    <text
-                                        x={pt.x}
-                                        y={pt.y}
-                                        textAnchor="middle"
-                                        dominantBaseline="central"
-                                        fill="white"
-                                        fontSize={pointRadius * 1.4}
-                                        fontWeight="bold"
-                                        style={{ pointerEvents: 'none' }}
-                                    >
-                                        {pt.label === 1 ? '+' : '−'}
-                                    </text>
-                                </g>
-                            ))}
-                        </svg>
-                    )}
+                                )}
+
+                                {/* Points */}
+                                {points.map((pt, i) => (
+                                    <g key={i}>
+                                        <circle
+                                            cx={pt.x}
+                                            cy={pt.y}
+                                            r={pointRadius}
+                                            fill={pt.label === 1 ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)'}
+                                            stroke="white"
+                                            strokeWidth={Math.max(2, pointRadius * 0.3)}
+                                        />
+                                        {/* Plus or minus icon inside */}
+                                        <text
+                                            x={pt.x}
+                                            y={pt.y}
+                                            textAnchor="middle"
+                                            dominantBaseline="central"
+                                            fill="white"
+                                            fontSize={pointRadius * 1.4}
+                                            fontWeight="bold"
+                                            style={{ pointerEvents: 'none' }}
+                                        >
+                                            {pt.label === 1 ? '+' : '−'}
+                                        </text>
+                                    </g>
+                                ))}
+                            </svg>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
