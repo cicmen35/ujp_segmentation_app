@@ -18,6 +18,7 @@ type Toast = {
 }
 
 export function App() {
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const clear = useSessionStore((state) => state.clear)
   const maskUrl = useSessionStore((state) => state.maskUrl)
   const boundingBox = useSessionStore((state) => state.boundingBox)
@@ -60,7 +61,7 @@ export function App() {
 
   return (
     <div className="flex h-screen bg-white">
-      {auth.isLoggedIn && <Sidebar />}
+      {auth.isLoggedIn && <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen((o) => !o)} />}
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header
           isLoggedIn={auth.isLoggedIn}

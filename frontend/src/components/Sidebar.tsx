@@ -52,6 +52,22 @@ type FolderTreeProps = {
   depth?: number
 }
 
+function ChevronLeftIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 18l-6-6 6-6" />
+    </svg>
+  )
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 18l6-6-6-6" />
+    </svg>
+  )
+}
+
 function PencilIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="currentColor">
@@ -240,7 +256,12 @@ function FolderTree({
   )
 }
 
-export function Sidebar() {
+type SidebarProps = {
+  isOpen: boolean
+  onToggle: () => void
+}
+
+export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const restoreSavedSession = useSessionStore((s) => s.loadSavedSession)
   const setSelectedSaveTarget = useSessionStore((s) => s.setSelectedSaveTarget)
   const folderTreeVersion = useSessionStore((s) => s.folderTreeVersion)
@@ -628,6 +649,21 @@ export function Sidebar() {
     }
   }, [restoreSavedSession])
 
+  if (!isOpen) {
+    return (
+      <aside className="relative hidden h-full w-10 shrink-0 flex-col items-center border-r border-slate-200 bg-slate-50 md:flex">
+        <button
+          type="button"
+          aria-label="Open sidebar"
+          onClick={onToggle}
+          className="mt-3 inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+        >
+          <ChevronRightIcon />
+        </button>
+      </aside>
+    )
+  }
+
   return (
     <aside
       ref={sidebarRef}
@@ -643,6 +679,17 @@ export function Sidebar() {
           setSelectedSaveTarget(null, null)
         }}
       >
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Sessions</span>
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            onClick={(event) => { event.stopPropagation(); onToggle() }}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+          >
+            <ChevronLeftIcon />
+          </button>
+        </div>
         {folderError && (
           <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
             {folderError}
