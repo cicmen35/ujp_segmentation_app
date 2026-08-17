@@ -6,7 +6,7 @@ import json
 import sqlite3
 
 from backend.database import get_db
-from backend.routes.auth_routes import get_current_user
+from backend.dependencies import get_current_user
 from backend.services.storage_service import (
     build_folder_tree,
     copy_relative_item,
