@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Request, status
 from pydantic import BaseModel, Field
 import sqlite3
 import datetime
-import uuid
 import json
 
 from backend.config import ENABLE_DEV_AUTH_BYPASS
@@ -13,6 +12,12 @@ from backend.dependencies import (
     get_current_user,
     require_admin,
 )
+from backend.schemas.auth import (
+    UserResponse,
+    UserListItemResponse,
+    PromptPresetResponse,
+)
+from backend.schemas.common import MessageResponse
 from backend.services.auth_service import verify_password, create_session, get_password_hash
 
 router = APIRouter()
@@ -57,7 +62,7 @@ def create_auth_response(response: Response, user_id: str, username: str, role: 
     )
     return {"id": user_id, "username": username, "role": role}
 
-@router.post("/login")
+@router.post("/login", response_model=UserResponse)
 def login(
     login_req: LoginRequest,
     response: Response,
@@ -82,7 +87,7 @@ def login(
     )
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(
     register_req: RegisterRequest,
     response: Response,
@@ -125,7 +130,7 @@ def register(
         db=db,
     )
 
-@router.post("/logout")
+@router.post("/logout", response_model=MessageResponse)
 def logout(request: Request, response: Response, db: sqlite3.Connection = Depends(get_db)):
     token = request.cookies.get("session_token")
     if token:
@@ -157,12 +162,12 @@ def delete_user_by_username(username: str, db: sqlite3.Connection):
     db.commit()
 
 
-@router.get("/me")
+@router.get("/me", response_model=UserResponse)
 def get_me(user: dict = Depends(get_current_user)):
     return user
 
 
-@router.get("/prompt-preset")
+@router.get("/prompt-preset", response_model=PromptPresetResponse | None)
 def get_prompt_preset(
     user: dict = Depends(get_current_user),
     db: sqlite3.Connection = Depends(get_db),
@@ -190,7 +195,7 @@ def get_prompt_preset(
     }
 
 
-@router.put("/prompt-preset")
+@router.put("/prompt-preset", response_model=MessageResponse)
 def save_prompt_preset(
     preset: PromptPresetPayload,
     user: dict = Depends(get_current_user),
@@ -226,7 +231,7 @@ def save_prompt_preset(
     return {"message": "Prompt preset saved"}
 
 
-@router.get("/users")
+@router.get("/users", response_model=list[UserListItemResponse])
 def list_users(
     q: str = Query(default="", max_length=100),
     limit: int = Query(default=5, ge=1, le=20),
@@ -250,7 +255,7 @@ def list_users(
     return [{"username": row["username"], "role": row["role"]} for row in rows]
 
 
-@router.delete("/users/{username}")
+@router.delete("/users/{username}", response_model=MessageResponse)
 def delete_user(
     username: str,
     admin: dict = Depends(require_admin),
@@ -264,7 +269,7 @@ def delete_user(
     return {"message": f"User '{username}' deleted"}
 
 
-@router.delete("/dev/users/{username}")
+@router.delete("/dev/users/{username}", response_model=MessageResponse)
 def dev_delete_user(username: str, db: sqlite3.Connection = Depends(get_db)):
     if not ENABLE_DEV_AUTH_BYPASS:
         raise HTTPException(status_code=404, detail="Not found")

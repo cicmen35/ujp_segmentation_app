@@ -7,6 +7,14 @@ import sqlite3
 
 from backend.database import get_db
 from backend.dependencies import get_current_user
+from backend.schemas.common import MessageResponse
+from backend.schemas.files import (
+    FolderTreeResponse,
+    FolderItemResponse,
+    ItemResponse,
+    SaveSessionResponse,
+    SavedSessionResponse,
+)
 from backend.services.storage_service import (
     build_folder_tree,
     copy_relative_item,
@@ -57,7 +65,7 @@ def get_scope_root(user: dict, scope: str):
     raise HTTPException(status_code=400, detail="Invalid folder scope")
 
 
-@router.get("/tree")
+@router.get("/tree", response_model=FolderTreeResponse)
 def get_folder_tree(user: dict = Depends(get_current_user)):
     private_root = get_private_root(user["id"])
     payload = {
@@ -68,7 +76,7 @@ def get_folder_tree(user: dict = Depends(get_current_user)):
     return payload
 
 
-@router.post("/folders")
+@router.post("/folders", response_model=FolderItemResponse, status_code=201)
 def create_folder(
     request: CreateFolderRequest,
     user: dict = Depends(get_current_user),
@@ -86,7 +94,7 @@ def create_folder(
     return {"name": folder_name, "path": path, "scope": request.scope}
 
 
-@router.delete("/folders")
+@router.delete("/folders", response_model=MessageResponse)
 def delete_folder(
     scope: str,
     path: str,
@@ -102,7 +110,7 @@ def delete_folder(
     return {"message": "Folder deleted"}
 
 
-@router.patch("/items")
+@router.patch("/items", response_model=ItemResponse)
 def rename_item(
     request: RenameItemRequest,
     user: dict = Depends(get_current_user),
@@ -112,7 +120,7 @@ def rename_item(
     return {"scope": request.scope, **renamed}
 
 
-@router.post("/items/copy")
+@router.post("/items/copy", response_model=ItemResponse, status_code=201)
 def copy_item(
     request: CopyItemRequest,
     user: dict = Depends(get_current_user),
@@ -131,7 +139,7 @@ def copy_item(
     return {"scope": request.destination_scope, **copied}
 
 
-@router.post("/save-session")
+@router.post("/save-session", response_model=SaveSessionResponse, status_code=201)
 async def save_session(
     original_image: UploadFile = File(...),
     mask_image: UploadFile = File(...),
@@ -177,7 +185,7 @@ async def save_session(
     }
 
 
-@router.get("/session")
+@router.get("/session", response_model=SavedSessionResponse)
 def get_saved_session(
     scope: str,
     path: str,
@@ -188,7 +196,7 @@ def get_saved_session(
     return {"scope": scope, **session_payload}
 
 
-@router.get("/content")
+@router.get("/content", response_class=FileResponse)
 def get_file_content(
     scope: str,
     path: str,
