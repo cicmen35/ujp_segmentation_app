@@ -4,8 +4,9 @@ from pathlib import Path
 DB_FILE = Path(__file__).resolve().parent / "data" / "app.db"
 
 def get_db():
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
     try:
         yield conn
     finally:
@@ -50,6 +51,11 @@ def init_db():
         )
     ''')
     
+    # Index to speed up session lookups by user_id (used during user deletion)
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)
+    ''')
+
     conn.commit()
     conn.close()
 
