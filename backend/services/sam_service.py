@@ -1,3 +1,5 @@
+import asyncio
+import concurrent.futures
 import json
 import numpy as np
 import cv2
@@ -23,6 +25,10 @@ MODEL_TYPE = "vit_h"
 sam = sam_model_registry[MODEL_TYPE](checkpoint=str(CHECKPOINT))
 sam.to("cpu")
 predictor = SamPredictor(sam)
+
+# Single-worker executor — SAM predictor is not thread-safe for parallel calls.
+# Using one worker serialises inference while keeping the event loop free.
+_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 
 
 def _apply_histogram_normalization(img: np.ndarray) -> np.ndarray:
@@ -50,8 +56,8 @@ def _apply_preprocessing(img: np.ndarray, preprocessing: str) -> np.ndarray:
 	return _apply_contrast_adjustment(img)
 
 
-async def run_sam(image_file, prompt_json: str, preprocessing: str = "none") -> bytes:
-	data = await image_file.read()
+def _run_sam_sync(data: bytes, prompt_json: str, preprocessing: str) -> bytes:
+	"""Blocking SAM inference — must be called via run_in_executor, not directly in async code."""
 	img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
 	if img is None:
 		raise HTTPException(status_code=400, detail="Invalid image file")
@@ -60,7 +66,10 @@ async def run_sam(image_file, prompt_json: str, preprocessing: str = "none") -> 
 
 	predictor.set_image(img)
 
-	prompt = json.loads(prompt_json)
+	try:
+		prompt = json.loads(prompt_json)
+	except json.JSONDecodeError as exc:
+		raise HTTPException(status_code=400, detail="Invalid prompt JSON") from exc
 
 	box = None
 	if "box" in prompt and prompt["box"]:
@@ -82,11 +91,23 @@ async def run_sam(image_file, prompt_json: str, preprocessing: str = "none") -> 
 		box=box,
 		point_coords=point_coords,
 		point_labels=point_labels,
-		multimask_output=multimask
+		multimask_output=multimask,
 	)
 
 	best_mask = masks[scores.argmax()]
 	mask_img = (best_mask * 255).astype(np.uint8)
-
 	_, png = cv2.imencode(".png", mask_img)
 	return png.tobytes()
+
+
+async def run_sam(image_file, prompt_json: str, preprocessing: str = "none") -> bytes:
+	"""Async entry point — reads the upload then offloads all CPU work to a thread."""
+	data = await image_file.read()
+	loop = asyncio.get_event_loop()
+	return await loop.run_in_executor(
+		_executor,
+		_run_sam_sync,
+		data,
+		prompt_json,
+		preprocessing,
+	)
